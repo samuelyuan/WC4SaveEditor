@@ -102,3 +102,35 @@ func GetFileRemainingData(inputFile *os.File, offset int) []byte {
 	}
 	return remainder
 }
+
+// ReadUint8AtFileOffset reads a uint8 value from a file at the specified offset
+func ReadUint8AtFileOffset(inputFilename string, offset int) int {
+	inputFile, err := os.OpenFile(inputFilename, os.O_RDONLY, 0644)
+	defer inputFile.Close()
+	if err != nil {
+		log.Fatal("Failed to load save state: ", err)
+	}
+
+	byteData := make([]byte, 1)
+	if _, err := inputFile.ReadAt(byteData, int64(offset)); err != nil {
+		log.Fatal("Failed to read uint8 from file:", err)
+	}
+
+	return int(byteData[0])
+}
+
+// ReadUint16AtFileOffset reads a uint16 value from a file at the specified offset
+func ReadUint16AtFileOffset(inputFilename string, offset int) int {
+	inputFile, err := os.OpenFile(inputFilename, os.O_RDONLY, 0644)
+	defer inputFile.Close()
+	if err != nil {
+		log.Fatal("Failed to load save state: ", err)
+	}
+
+	byteData := make([]byte, 2)
+	if _, err := inputFile.ReadAt(byteData, int64(offset)); err != nil {
+		log.Fatal("Failed to read uint16 from file:", err)
+	}
+
+	return int(binary.LittleEndian.Uint16(byteData))
+}

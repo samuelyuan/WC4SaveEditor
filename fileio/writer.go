@@ -6,16 +6,51 @@ import (
 	"os"
 )
 
-
-// Unit type constants (used in core writing operations)
-const (
-	UnitTypeCity = 39 // City unit type
-)
-
 // Tile ownership constants
 const (
 	TileUnowned = 255 // Value indicating unowned/neutral tile
+	MainPlayer  = 0   // Main player ID (player 0)
 )
+
+// ConversionStats holds aggregated statistics for conversion operations
+type ConversionStats struct {
+	TotalChanged    int          // Total number of tiles/units changed
+	ChangesByPlayer map[byte]int // Changes grouped by original player
+}
+
+// NewConversionStats creates a new ConversionStats struct with initialized maps
+func NewConversionStats() *ConversionStats {
+	return &ConversionStats{
+		ChangesByPlayer: make(map[byte]int),
+	}
+}
+
+// AddChange records a change in the statistics
+func (cs *ConversionStats) AddChange(oldPlayer, newPlayer byte, x, y int) {
+	cs.TotalChanged++
+	cs.ChangesByPlayer[oldPlayer]++
+}
+
+// PrintSummary prints a formatted summary of the conversion statistics
+func (cs *ConversionStats) PrintSummary(operation string, saveOutput *WC4SaveOutput) {
+	fmt.Printf("\n=== %s Summary ===\n", operation)
+	fmt.Printf("Total changes: %d\n", cs.TotalChanged)
+
+	if len(cs.ChangesByPlayer) > 0 {
+		fmt.Println("\nChanges by original player:")
+		// Get sorted player IDs for consistent ordering
+		sortedPlayerIDs := GetSortedPlayerIDs(saveOutput.PlayerData)
+		for _, playerID := range sortedPlayerIDs {
+			if count, exists := cs.ChangesByPlayer[byte(playerID)]; exists {
+				player := saveOutput.PlayerData[playerID]
+				countryName, _ := GetCountryInfo(player.CountryId)
+				fmt.Printf("  Player %d (%s - CountryId %d): %d changes\n", playerID, countryName, player.CountryId, count)
+			}
+		}
+	}
+
+	fmt.Println("========================\n")
+}
 
 func WriteUnitOwnerToFile(inputFilename string, value int, targetX int, targetY int) {
 	inputFile, err := os.OpenFile(inputFilename, os.O_RDWR, 0644)
@@ -169,10 +204,9 @@ func RestoreAlliesHealth(filename string, saveOutput *WC4SaveOutput, playerID in
 		}
 		fmt.Println()
 		for _, unitInfo := range unitInfos {
-			unitTypeName := "unit"
+			unitTypeName := GetUnitTypeName(unitInfo.Unit.UnitType)
 			cityInfo := ""
 			if unitInfo.Unit.UnitType == UnitTypeCity {
-				unitTypeName = "city"
 				// Try to find the city name by looking for a city at the same position
 				cityName := GetCityNameAtPosition(unitInfo.Row, unitInfo.Col, saveOutput)
 				cityInfo = fmt.Sprintf(" (%s)", cityName)
@@ -247,10 +281,9 @@ func WeakenEnemies(filename string, saveOutput *WC4SaveOutput, playerID int) {
 		}
 		fmt.Println()
 		for _, unitInfo := range unitInfos {
-			unitTypeName := "unit"
+			unitTypeName := GetUnitTypeName(unitInfo.Unit.UnitType)
 			cityInfo := ""
 			if unitInfo.Unit.UnitType == UnitTypeCity {
-				unitTypeName = "city"
 				// Try to find the city name by looking for a city at the same position
 				cityName := GetCityNameAtPosition(unitInfo.Row, unitInfo.Col, saveOutput)
 				cityInfo = fmt.Sprintf(" (%s)", cityName)
@@ -269,11 +302,13 @@ func WeakenEnemies(filename string, saveOutput *WC4SaveOutput, playerID int) {
 	// Print breakdown by unit type
 	fmt.Println("\nBreakdown by Unit Type:")
 	fmt.Println("----------------------")
-	for unitType, count := range unitsByType {
-		unitTypeName := "unit"
-		if unitType == UnitTypeCity {
-			unitTypeName = "city"
-		}
+
+	// Sort unit types in numeric ascending order
+	sortedUnitTypes := GetSortedUnitTypes(unitsByType)
+
+	for _, unitType := range sortedUnitTypes {
+		count := unitsByType[byte(unitType)]
+		unitTypeName := GetUnitTypeName(uint8(unitType))
 		fmt.Printf("Type %d (%s): %d units\n", unitType, unitTypeName, count)
 	}
 
@@ -282,7 +317,7 @@ func WeakenEnemies(filename string, saveOutput *WC4SaveOutput, playerID int) {
 
 func ConvertCoordinates(coordinateCode int, unitOwnerData [][]byte, gameMode int) (int, int, bool) {
 	row := int(coordinateCode) / len(unitOwnerData[0])
-	if gameMode == 2 { // subtract 2 from row if conquest
+	if gameMode == GameModeConquest { // subtract 2 from row if conquest
 		row -= 2
 	}
 
@@ -298,7 +333,7 @@ func ConvertCoordinates(coordinateCode int, unitOwnerData [][]byte, gameMode int
 
 func ConvertToCoordinateCode(row, col int, unitOwnerData [][]byte, gameMode int) int {
 	coordinateCode := row*len(unitOwnerData[0]) + col
-	if gameMode == 2 { // conquest mode
+	if gameMode == GameModeConquest { // conquest mode
 		coordinateCode += 2 * len(unitOwnerData[0])
 	}
 	return coordinateCode
@@ -317,18 +352,98 @@ func GetCityNameAtPosition(row, col int, saveOutput *WC4SaveOutput) string {
 	return "Unknown"
 }
 
-func GetCountryInfo(countryID uint32) (string, string) {
-	countryName, hasName := GetCountryName(uint8(countryID))
-	if !hasName {
-		countryName = "Unknown"
-	}
-	return countryName, fmt.Sprintf("CountryId %d", countryID)
-}
-
 func ConvertCoordinatesWithDebug(coordinateCode int, unitOwnerData [][]byte, gameMode int) (int, int, bool) {
 	row, col, valid := ConvertCoordinates(coordinateCode, unitOwnerData, gameMode)
 	if valid {
 		fmt.Printf("Coordinate %v (row: %v, column: %v)\n", coordinateCode, row, col)
 	}
 	return row, col, valid
+}
+
+// ConvertPlayer converts all units owned by oldPlayer to newPlayer
+func ConvertPlayer(inputFilename string, saveOutput *WC4SaveOutput, oldPlayer, newPlayer int) *ConversionStats {
+	stats := NewConversionStats()
+
+	for i := 0; i < len(saveOutput.UnitOwnerData); i++ {
+		for j := 0; j < len(saveOutput.UnitOwnerData[i]); j++ {
+			if saveOutput.UnitOwnerData[i][j] != TileUnowned && saveOutput.UnitOwnerData[i][j] != MainPlayer {
+				if saveOutput.UnitOwnerData[i][j] != byte(oldPlayer) {
+					continue
+				}
+
+				oldValue := saveOutput.UnitOwnerData[i][j]
+				saveOutput.UnitOwnerData[i][j] = byte(newPlayer)
+				fmt.Println(fmt.Sprintf("Changed owner at (%v, %v) from %v to %v", i, j, oldPlayer, newPlayer))
+				stats.AddChange(oldValue, byte(newPlayer), j, i)
+			}
+		}
+	}
+	WriteAllUnitOwnersToFile(inputFilename, saveOutput.UnitOwnerData)
+	return stats
+}
+
+// ConvertTile converts a specific tile at (x, y) to newPlayer
+func ConvertTile(inputFilename string, saveOutput *WC4SaveOutput, x, y, newPlayer int) error {
+	oldPlayer := saveOutput.UnitOwnerData[y][x]
+	if oldPlayer == TileUnowned {
+		return fmt.Errorf("can't convert tile at (%v, %v) - tile has no owner", y, x)
+	}
+	WriteUnitOwnerToFile(inputFilename, newPlayer, x, y)
+	fmt.Println(fmt.Sprintf("Changed owner at (%v, %v) from %v to %v", y, x, oldPlayer, newPlayer))
+	return nil
+}
+
+// ConvertAllAllies converts all allied units to player 0
+func ConvertAllAllies(inputFilename string, saveOutput *WC4SaveOutput) *ConversionStats {
+	stats := NewConversionStats()
+	playerTeamId := saveOutput.PlayerData[MainPlayer].TeamId
+
+	for i := 0; i < len(saveOutput.UnitOwnerData); i++ {
+		for j := 0; j < len(saveOutput.UnitOwnerData[i]); j++ {
+			if saveOutput.UnitOwnerData[i][j] == TileUnowned {
+				continue
+			}
+
+			if saveOutput.UnitOwnerData[i][j] == MainPlayer {
+				continue
+			}
+
+			oldValue := saveOutput.UnitOwnerData[i][j]
+			if saveOutput.PlayerData[oldValue].TeamId == playerTeamId {
+				saveOutput.UnitOwnerData[i][j] = MainPlayer
+				fmt.Println(fmt.Sprintf("Changed owner at (%v, %v) from %v to %d", i, j, oldValue, MainPlayer))
+				stats.AddChange(oldValue, MainPlayer, j, i)
+			}
+		}
+	}
+	WriteAllUnitOwnersToFile(inputFilename, saveOutput.UnitOwnerData)
+	return stats
+}
+
+// ConvertTeam converts all players to the same team as player 0
+func ConvertTeam(inputFilename string, saveOutput *WC4SaveOutput) {
+	playerTeamId := saveOutput.PlayerData[MainPlayer].TeamId
+	for i := 1; i < len(saveOutput.PlayerData); i++ {
+		offset := GetFileOffsetMap()[BuildPlayerStartKey(i)]
+		WriteUint32AtFileOffset(inputFilename, offset+24, int(playerTeamId))
+		fmt.Println("Converting player", i, "from team", saveOutput.PlayerData[i].TeamId, "to team", playerTeamId)
+	}
+}
+
+// ConvertAllPlayers converts all units to player 0
+func ConvertAllPlayers(inputFilename string, saveOutput *WC4SaveOutput) *ConversionStats {
+	stats := NewConversionStats()
+
+	for i := 0; i < len(saveOutput.UnitOwnerData); i++ {
+		for j := 0; j < len(saveOutput.UnitOwnerData[i]); j++ {
+			if saveOutput.UnitOwnerData[i][j] != TileUnowned && saveOutput.UnitOwnerData[i][j] != MainPlayer {
+				oldValue := saveOutput.UnitOwnerData[i][j]
+				saveOutput.UnitOwnerData[i][j] = MainPlayer
+				fmt.Println(fmt.Sprintf("Changed owner at (%v, %v) from %v to %d", i, j, oldValue, MainPlayer))
+				stats.AddChange(oldValue, MainPlayer, j, i)
+			}
+		}
+	}
+	WriteAllUnitOwnersToFile(inputFilename, saveOutput.UnitOwnerData)
+	return stats
 }
