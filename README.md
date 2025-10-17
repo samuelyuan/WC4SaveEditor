@@ -1,5 +1,20 @@
 # WC4SaveEditor
 
+## Save File Location
+
+Before using this tool, you need to locate your World Conqueror 4 save file:
+
+**Windows (Microsoft Store version):**
+```
+C:\Users\<YourUserName>\AppData\Local\Packages\EasyTech.WorldConqueror4_<PackageIdentifier>\LocalState
+```
+
+Replace `<YourUserName>` with your actual Windows username. The `<PackageIdentifier>` is a unique string that may vary.
+
+## Documentation
+
+- [File Format Documentation](FILE_FORMAT.md) - Detailed description of the World Conqueror 4 save file format
+
 ## How to Use
 
 There are various commands to modify the save file. 

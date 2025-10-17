@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"strings"
 )
 
 var (
@@ -98,7 +99,7 @@ type UnitData struct {
 	UnknownArr5         [12]byte
 	MoraleValue         int8
 	MoraleTurnsLeft     uint16
-	UnknownArr6         [5]byte
+	UnknownArr6         [21]byte
 }
 
 type LandmineData struct {
@@ -110,12 +111,12 @@ type LandmineData struct {
 }
 
 type WC4SaveOutput struct {
-	SaveHeader SaveHeader
+	SaveHeader    SaveHeader
 	PlayerData    []CountryData
 	CityTiles     [][]uint16
 	UnitOwnerData [][]byte
-	Cities []CityData
-	Units []UnitData
+	Cities        []CityData
+	Units         []UnitData
 }
 
 func DeserializeMapHeaderFromBytes(streamReader *io.SectionReader) SaveHeader {
@@ -312,21 +313,36 @@ func ReadSaveFile(inputFilename string) (*WC4SaveOutput, error) {
 	fileLength := fi.Size()
 	streamReader := io.NewSectionReader(inputFile, int64(0), fileLength)
 
+	fmt.Println("\n" + strings.Repeat("=", 60))
+	fmt.Println("READING SAVE FILE SECTIONS")
+	fmt.Println(strings.Repeat("=", 60))
+
+	fmt.Println("\n[1] SAVE HEADER")
+	fmt.Println(strings.Repeat("-", 20))
 	saveHeader := DeserializeMapHeaderFromBytes(streamReader)
+
+	fmt.Println("\n[2] PLAYER DATA")
+	fmt.Println(strings.Repeat("-", 20))
 	allPlayerData := DeserializeCountryDataFromBytes(streamReader, int(saveHeader.CountryCount))
 
 	isConquest := (int(saveHeader.GameMode) == 2)
 	if !isConquest {
 		if saveHeader.UnknownInt7 == 0 {
+			fmt.Println("\n[3] CAMPAIGN BLOCK")
+			fmt.Println(strings.Repeat("-", 20))
 			DeserializeUnknownCampaignBlockFromBytes(streamReader, int(saveHeader.MapWidth), int(saveHeader.MapHeight))
 		}
 	}
 
+	fmt.Println("\n[4] CITY TILES")
+	fmt.Println(strings.Repeat("-", 20))
 	allCityTiles := DeserializeCityTileOwnershipFromBytes(streamReader, int(saveHeader.MapWidth), int(saveHeader.MapHeight))
 
 	if !isConquest {
 		// required for some maps because the data is shifted
-		if int(saveHeader.MapWidth) * int(saveHeader.MapHeight) != int(saveHeader.UnknownInt10) {
+		if int(saveHeader.MapWidth)*int(saveHeader.MapHeight) != int(saveHeader.UnknownInt10) {
+			fmt.Println("\n[5] UNKNOWN BLOCK 1")
+			fmt.Println(strings.Repeat("-", 20))
 			unknownBlock := make([]byte, 8)
 			if err := binary.Read(streamReader, binary.LittleEndian, &unknownBlock); err != nil {
 				log.Fatal("Failed to load unknownBlock: ", err)
@@ -334,12 +350,16 @@ func ReadSaveFile(inputFilename string) (*WC4SaveOutput, error) {
 		}
 	}
 
+	fmt.Println("\n[6] UNIT OWNER DATA")
+	fmt.Println(strings.Repeat("-", 20))
 	updateFileOffsetMap(fileOffsetMap, streamReader, buildUnitOwnerStartKey())
 	unitOwnerData := DeserializeUnitOwnerDataFromBytes(streamReader, int(saveHeader.MapWidth), int(saveHeader.MapHeight))
 	updateFileOffsetMap(fileOffsetMap, streamReader, buildUnitOwnerEndKey())
 
 	if !isConquest {
-		if int(saveHeader.MapWidth) * int(saveHeader.MapHeight) != int(saveHeader.UnknownInt10) {
+		if int(saveHeader.MapWidth)*int(saveHeader.MapHeight) != int(saveHeader.UnknownInt10) {
+			fmt.Println("\n[7] UNKNOWN BLOCK 2")
+			fmt.Println(strings.Repeat("-", 20))
 			unknownBlock := make([]byte, 4)
 			if err := binary.Read(streamReader, binary.LittleEndian, &unknownBlock); err != nil {
 				log.Fatal("Failed to load unknownBlock: ", err)
@@ -347,9 +367,20 @@ func ReadSaveFile(inputFilename string) (*WC4SaveOutput, error) {
 		}
 	}
 
+	fmt.Println("\n[8] CITIES")
+	fmt.Println(strings.Repeat("-", 20))
 	allCities := DeserializeCityDataFromBytes(streamReader, int(saveHeader.CityCount))
+
+	fmt.Println("\n[9] UNITS")
+	fmt.Println(strings.Repeat("-", 20))
 	allUnits := DeserializeUnitDataFromBytes(streamReader, int(saveHeader.UnitCount))
+
+	fmt.Println("\n[10] LANDMINES")
+	fmt.Println(strings.Repeat("-", 20))
 	DeserializeLandmineDataFromBytes(streamReader, int(saveHeader.LandmineCount))
+
+	fmt.Println("\n[11] UNKNOWN DATA SECTIONS")
+	fmt.Println(strings.Repeat("-", 20))
 	DeserializeUnknownData2FromBytes(streamReader, int(saveHeader.UnknownCount1))
 	DeserializeUnknownData3FromBytes(streamReader, int(saveHeader.UnknownCount2))
 	DeserializeUnknownData4FromBytes(streamReader, int(saveHeader.UnknownCount3))
@@ -359,12 +390,168 @@ func ReadSaveFile(inputFilename string) (*WC4SaveOutput, error) {
 	DeserializeUnknownData7FromBytes(streamReader, int(saveHeader.UnknownCount9))
 
 	saveOutput := &WC4SaveOutput{
-		SaveHeader: saveHeader,
+		SaveHeader:    saveHeader,
 		PlayerData:    allPlayerData,
 		CityTiles:     allCityTiles,
 		UnitOwnerData: unitOwnerData,
-		Cities: allCities,
-		Units: allUnits,
+		Cities:        allCities,
+		Units:         allUnits,
 	}
+
+	// Print file summary with byte ranges
+	printFileSummary(saveHeader, fileLength)
+
 	return saveOutput, nil
+}
+
+func printFileSummary(header SaveHeader, fileLength int64) {
+	fmt.Println("\n" + strings.Repeat("=", 60))
+	fmt.Println("FILE SUMMARY")
+	fmt.Println(strings.Repeat("=", 60))
+	fmt.Printf("Total file size: %d bytes (%.2f KB)\n", fileLength, float64(fileLength)/1024)
+	fmt.Printf("Game mode: %d (%s)\n", header.GameMode, getGameModeName(header.GameMode))
+	fmt.Printf("Map dimensions: %dx%d\n", header.MapWidth, header.MapHeight)
+	fmt.Printf("Turn number: %d\n", header.TurnNumber)
+	fmt.Println()
+
+	fmt.Println("SECTION BREAKDOWN:")
+	fmt.Println("-----------------")
+
+	offset := int64(0)
+
+	// Save Header
+	headerSize := int64(208) // Size of SaveHeader struct
+	fmt.Printf("Save Header:        bytes 0x%04X-0x%04X (0x%04X bytes)\n", offset, offset+headerSize-1, headerSize)
+	offset += headerSize
+
+	// Player Data
+	playerDataSize := int64(header.CountryCount * 520) // 520 bytes per country
+	fmt.Printf("Player Data:        bytes 0x%04X-0x%04X (0x%04X bytes, %d countries)\n", offset, offset+playerDataSize-1, playerDataSize, header.CountryCount)
+	offset += playerDataSize
+
+	// Campaign block (if not conquest)
+	if header.GameMode != 2 && header.UnknownInt7 == 0 {
+		campaignBlockSize := int64(header.MapWidth * header.MapHeight * 16)
+		fmt.Printf("Campaign Block:     bytes 0x%04X-0x%04X (0x%04X bytes)\n", offset, offset+campaignBlockSize-1, campaignBlockSize)
+		offset += campaignBlockSize
+	}
+
+	// City Tiles
+	cityTilesSize := int64(header.MapWidth * header.MapHeight * 2) // 2 bytes per tile
+	fmt.Printf("City Tiles:         bytes 0x%04X-0x%04X (0x%04X bytes)\n", offset, offset+cityTilesSize-1, cityTilesSize)
+	offset += cityTilesSize
+
+	// Unknown block (if needed)
+	if header.GameMode != 2 && int64(header.MapWidth*header.MapHeight) != int64(header.UnknownInt10) {
+		unknownBlockSize := int64(8)
+		fmt.Printf("Unknown Block:      bytes 0x%04X-0x%04X (0x%04X bytes)\n", offset, offset+unknownBlockSize-1, unknownBlockSize)
+		offset += unknownBlockSize
+	}
+
+	// Unit Owner Data
+	unitOwnerSize := int64(header.MapWidth * header.MapHeight * 1) // 1 byte per tile
+	fmt.Printf("Unit Owner Data:    bytes 0x%04X-0x%04X (0x%04X bytes)\n", offset, offset+unitOwnerSize-1, unitOwnerSize)
+	offset += unitOwnerSize
+
+	// Another unknown block (if needed)
+	if header.GameMode != 2 && int64(header.MapWidth*header.MapHeight) != int64(header.UnknownInt10) {
+		unknownBlockSize := int64(4)
+		fmt.Printf("Unknown Block 2:    bytes 0x%04X-0x%04X (0x%04X bytes)\n", offset, offset+unknownBlockSize-1, unknownBlockSize)
+		offset += unknownBlockSize
+	}
+
+	// Cities
+	citiesSize := int64(header.CityCount * 32) // 32 bytes per city
+	fmt.Printf("Cities:             bytes 0x%04X-0x%04X (0x%04X bytes, %d cities)\n", offset, offset+citiesSize-1, citiesSize, header.CityCount)
+	offset += citiesSize
+
+	// Units
+	unitsSize := int64(header.UnitCount * 48) // 48 bytes per unit
+	fmt.Printf("Units:              bytes 0x%04X-0x%04X (0x%04X bytes, %d units)\n", offset, offset+unitsSize-1, unitsSize, header.UnitCount)
+	offset += unitsSize
+
+	// Landmines
+	landminesSize := int64(header.LandmineCount * 12) // 12 bytes per landmine
+	fmt.Printf("Landmines:          bytes 0x%04X-0x%04X (0x%04X bytes, %d landmines)\n", offset, offset+landminesSize-1, landminesSize, header.LandmineCount)
+	offset += landminesSize
+
+	// Unknown data sections
+	unknownData2Size := int64(header.UnknownCount1 * 16)
+	fmt.Printf("Unknown Data 2:     bytes 0x%04X-0x%04X (0x%04X bytes, %d entries)\n", offset, offset+unknownData2Size-1, unknownData2Size, header.UnknownCount1)
+	offset += unknownData2Size
+
+	unknownData3Size := int64(header.UnknownCount2 * 44)
+	fmt.Printf("Unknown Data 3:     bytes 0x%04X-0x%04X (0x%04X bytes, %d entries)\n", offset, offset+unknownData3Size-1, unknownData3Size, header.UnknownCount2)
+	offset += unknownData3Size
+
+	unknownData4Size := int64(header.UnknownCount3 * 80)
+	fmt.Printf("Unknown Data 4:     bytes 0x%04X-0x%04X (0x%04X bytes, %d entries)\n", offset, offset+unknownData4Size-1, unknownData4Size, header.UnknownCount3)
+	offset += unknownData4Size
+
+	unknownData5Size := int64(header.UnknownCount5 * 8)
+	fmt.Printf("Unknown Data 5:     bytes 0x%04X-0x%04X (0x%04X bytes, %d entries)\n", offset, offset+unknownData5Size-1, unknownData5Size, header.UnknownCount5)
+	offset += unknownData5Size
+
+	unknownData6Size := int64(header.UnknownCount6 * 8)
+	fmt.Printf("Unknown Data 6:     bytes 0x%04X-0x%04X (0x%04X bytes, %d entries)\n", offset, offset+unknownData6Size-1, unknownData6Size, header.UnknownCount6)
+	offset += unknownData6Size
+
+	importantCitiesSize := int64(header.ImportantCityCount * 4)
+	fmt.Printf("Important Cities:   bytes 0x%04X-0x%04X (0x%04X bytes, %d entries)\n", offset, offset+importantCitiesSize-1, importantCitiesSize, header.ImportantCityCount)
+	offset += importantCitiesSize
+
+	unknownData7Size := int64(header.UnknownCount9 * 16)
+	fmt.Printf("Unknown Data 7:     bytes 0x%04X-0x%04X (0x%04X bytes, %d entries)\n", offset, offset+unknownData7Size-1, unknownData7Size, header.UnknownCount9)
+	offset += unknownData7Size
+
+	// Remaining bytes
+	remainingBytes := fileLength - offset
+	if remainingBytes > 0 {
+		fmt.Printf("Remaining Data:     bytes 0x%04X-0x%04X (0x%04X bytes)\n", offset, fileLength-1, remainingBytes)
+	}
+
+	fmt.Println(strings.Repeat("=", 60))
+}
+
+func getGameModeName(gameMode uint32) string {
+	switch gameMode {
+	case 1:
+		return "Campaign"
+	case 2:
+		return "Conquest"
+	case 6:
+		return "Frontier"
+	default:
+		return "Unknown"
+	}
+}
+
+func ReadUint8AtFileOffset(inputFilename string, offset int) int {
+	inputFile, err := os.OpenFile(inputFilename, os.O_RDONLY, 0644)
+	defer inputFile.Close()
+	if err != nil {
+		log.Fatal("Failed to load save state: ", err)
+	}
+
+	byteData := make([]byte, 1)
+	if _, err := inputFile.ReadAt(byteData, int64(offset)); err != nil {
+		log.Fatal("Failed to read uint8 from file:", err)
+	}
+
+	return int(byteData[0])
+}
+
+func ReadUint16AtFileOffset(inputFilename string, offset int) int {
+	inputFile, err := os.OpenFile(inputFilename, os.O_RDONLY, 0644)
+	defer inputFile.Close()
+	if err != nil {
+		log.Fatal("Failed to load save state: ", err)
+	}
+
+	byteData := make([]byte, 2)
+	if _, err := inputFile.ReadAt(byteData, int64(offset)); err != nil {
+		log.Fatal("Failed to read uint16 from file:", err)
+	}
+
+	return int(binary.LittleEndian.Uint16(byteData))
 }
