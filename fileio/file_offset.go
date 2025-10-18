@@ -34,6 +34,15 @@ func GetFileOffsetMap() map[string]int {
 	return fileOffsetMap
 }
 
+// GetOffset safely retrieves an offset by key with validation
+func GetOffset(offsetKey string) int {
+	offset, ok := fileOffsetMap[offsetKey]
+	if !ok {
+		log.Fatal(fmt.Sprintf("Error: Unable to find offset for key '%s'. Command not run.", offsetKey))
+	}
+	return offset
+}
+
 func updateFileOffsetMap(fileOffsetMap map[string]int, streamReader *io.SectionReader, unitLocationKey string) {
 	fileOffset, err := streamReader.Seek(0, io.SeekCurrent)
 	if err != nil {

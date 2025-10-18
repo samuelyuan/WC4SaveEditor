@@ -63,6 +63,8 @@ func GetGeneralName(generalId uint16) (string, bool) {
 		return "Kuribayashi", true
 	case 29027:
 		return "Yamamoto", true
+	case 29028:
+		return "Terauchi", true
 	case 29029:
 		return "Tito", true
 	case 29030:
@@ -71,8 +73,12 @@ func GetGeneralName(generalId uint16) (string, bool) {
 		return "Eisenhower", true
 	case 29032:
 		return "Nimitz", true
+	case 29034:
+		return "Fletcher", true
 	case 29035:
 		return "Arnold", true
+	case 29036:
+		return "Bradley", true
 	case 29038:
 		return "Crerar", true
 	case 29039:
@@ -85,6 +91,8 @@ func GetGeneralName(generalId uint16) (string, bool) {
 		return "Leclerc", true
 	case 29043:
 		return "Bock", true
+	case 29045:
+		return "Rundstedt", true
 	case 29046:
 		return "Donitz", true
 	case 29047:
@@ -95,6 +103,8 @@ func GetGeneralName(generalId uint16) (string, bool) {
 		return "Guderian", true
 	case 29050:
 		return "Manstein", true
+	case 29051:
+		return "Rommel", true
 	case 29052:
 		return "Model", true
 	case 29053:
@@ -103,8 +113,16 @@ func GetGeneralName(generalId uint16) (string, bool) {
 		return "Blamey", true
 	case 29055:
 		return "Nasser", true
+	case 29057:
+		return "Brauchitsch", true
 	case 29060:
 		return "Student", true
+	case 29061:
+		return "Schorner", true
+	case 29063:
+		return "Kuchler", true
+	case 29065:
+		return "Manteuffel", true
 	case 29066:
 		return "Keitel", true
 	case 29070:
@@ -183,10 +201,14 @@ func GetGeneralName(generalId uint16) (string, bool) {
 		return "Ozawa", true
 	case 29111:
 		return "Umezu", true
+	case 29112:
+		return "Kondo", true
 	case 29113:
 		return "Koga", true
 	case 29114:
 		return "Koiso", true
+	case 29116:
+		return "Toyoda", true
 	case 29117:
 		return "Inoue", true
 	case 29118:
@@ -213,6 +235,8 @@ func GetGeneralName(generalId uint16) (string, bool) {
 		return "Crace", true
 	case 29132:
 		return "Franco", true
+	case 29133:
+		return "Clark", true
 	case 29136:
 		return "Devers", true
 	case 29137:
@@ -233,6 +257,10 @@ func GetGeneralName(generalId uint16) (string, bool) {
 		return "Dutra", true
 	case 29153:
 		return "Camacho", true
+	case 29154:
+		return "Chung", true
+	case 29155:
+		return "Choe", true
 	default:
 		return "", false
 	}

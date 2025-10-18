@@ -27,9 +27,10 @@ func showHelp() {
 	fmt.Println("Usage: WC4SaveEditor.exe -input <savefile> -command <command>")
 	fmt.Println("")
 	fmt.Println("Commands:")
-	fmt.Println("  list-players, list-cities, list-units, list-units-by-map, list-tiles, list-generals")
-	fmt.Println("  max-money, max-city-tech, restore-allies, weaken-enemy")
-	fmt.Println("  convert-player, convert-tile, convert-all-allies, convert-team, convert-all-players")
+	fmt.Println("  list-players, list-cities, list-units, list-units-by-map, list-tiles, list-generals, list-landmines")
+	fmt.Println("  max-money, max-city-tech, heal-allies, weaken-enemies")
+	fmt.Println("  transfer-units (interactive), transfer-tile (interactive)")
+	fmt.Println("  convert-allies-to-main-player, unite-team, conquer-all")
 	fmt.Println("")
 	fmt.Println("Use -help to show this message")
 }
@@ -37,10 +38,6 @@ func showHelp() {
 func main() {
 	inputFilenamePtr := flag.String("input", "", "Path to the World Conqueror 4 save file")
 	commandPtr := flag.String("command", "", "Command to execute (use -help for list of commands)")
-	oldValuePtr := flag.String("oldvalue", "", "Old value (used with convert-player command)")
-	newValuePtr := flag.String("value", "", "New value (used with various commands)")
-	xPtr := flag.Int("x", -1, "X coordinate (used with convert-tile command)")
-	yPtr := flag.Int("y", -1, "Y coordinate (used with convert-tile command)")
 	helpPtr := flag.Bool("help", false, "Show help information")
 	flag.Parse()
 
@@ -79,55 +76,28 @@ func main() {
 		fileio.ListTilesByOwner(saveOutput)
 	} else if command == "list-generals" {
 		fileio.ListGenerals(saveOutput)
+	} else if command == "list-landmines" {
+		fileio.ListLandmines(saveOutput)
 	} else if command == "max-money" {
 		fileio.SetPlayerMaxCurrency(inputFilename, 0, 9999)
 	} else if command == "max-city-tech" {
 		fileio.SetPlayerMaxCityTech(inputFilename, saveOutput, 0, 4)
-	} else if command == "restore-allies" {
+	} else if command == "heal-allies" {
 		fileio.RestoreAlliesHealth(inputFilename, saveOutput, 0)
-	} else if command == "weaken-enemy" {
+	} else if command == "weaken-enemies" {
 		fileio.WeakenEnemies(inputFilename, saveOutput, 0)
-	} else if command == "convert-player" {
-		if *oldValuePtr == "" || *newValuePtr == "" {
-			fmt.Println("Error: Both -oldvalue and -value flags are required for convert-player command")
-			fmt.Println("Example: -command convert-player -oldvalue 2 -value 0")
-			return
-		}
-		oldPlayer := parseInt(*oldValuePtr, "old player ID")
-		if oldPlayer == -1 {
-			return
-		}
-		newPlayer := parseInt(*newValuePtr, "new player ID")
-		if newPlayer == -1 {
-			return
-		}
-		stats := fileio.ConvertPlayer(inputFilename, saveOutput, oldPlayer, newPlayer)
-		stats.PrintSummary("Convert Player", saveOutput)
-	} else if command == "convert-tile" {
-		if *xPtr == -1 || *yPtr == -1 || *newValuePtr == "" {
-			fmt.Println("Error: -x, -y, and -value flags are required for convert-tile command")
-			fmt.Println("Example: -command convert-tile -x 10 -y 5 -value 0")
-			return
-		}
-		targetX := *xPtr
-		targetY := *yPtr
-		newPlayer := parseInt(*newValuePtr, "player ID")
-		if newPlayer == -1 {
-			return
-		}
-		err := fileio.ConvertTile(inputFilename, saveOutput, targetX, targetY, newPlayer)
-		if err != nil {
-			fmt.Printf("Error: %v\n", err)
-			return
-		}
-	} else if command == "convert-all-allies" {
+	} else if command == "transfer-units" {
+		fileio.InteractiveConvertPlayer(inputFilename, saveOutput)
+	} else if command == "transfer-tile" {
+		fileio.InteractiveConvertTile(inputFilename, saveOutput)
+	} else if command == "convert-allies-to-main-player" {
 		stats := fileio.ConvertAllAllies(inputFilename, saveOutput)
-		stats.PrintSummary("Convert All Allies", saveOutput)
-	} else if command == "convert-team" {
+		stats.PrintSummary("Convert Allies to Main Player", saveOutput)
+	} else if command == "unite-team" {
 		fileio.ConvertTeam(inputFilename, saveOutput)
-	} else if command == "convert-all-players" {
+	} else if command == "conquer-all" {
 		stats := fileio.ConvertAllPlayers(inputFilename, saveOutput)
-		stats.PrintSummary("Convert All Players", saveOutput)
+		stats.PrintSummary("Conquer All Players", saveOutput)
 	} else {
 		fmt.Printf("Error: Unrecognized command '%s'\n", command)
 		fmt.Println("Use -help to see available commands")

@@ -22,6 +22,7 @@ const (
 	UnitTypeDestroyer          = 16 // Destroyer
 	UnitTypeCruiser            = 17 // Cruiser
 	UnitTypeCarrier            = 18 // Carrier
+	UnitTypeSuperCarrier       = 19 // Super Carrier
 	UnitTypeBunker             = 35 // Bunker
 	UnitTypeLandFort           = 36 // Land Fort
 	UnitTypeCoastalArtillery   = 37 // Coastal Artillery
@@ -68,6 +69,8 @@ func GetUnitTypeName(unitType uint8) string {
 		return "Cruiser"
 	case UnitTypeCarrier:
 		return "Carrier"
+	case UnitTypeSuperCarrier:
+		return "Super Carrier"
 	case UnitTypeBunker:
 		return "Bunker"
 	case UnitTypeLandFort:

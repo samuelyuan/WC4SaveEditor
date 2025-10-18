@@ -1,6 +1,7 @@
 package fileio
 
 import (
+	"encoding/binary"
 	"fmt"
 	"log"
 	"os"
@@ -76,39 +77,72 @@ func WriteAllUnitOwnersToFile(inputFilename string, tileDataOverwrite [][]byte) 
 		byteData = append(byteData, tileDataOverwrite[i]...)
 	}
 
-	WriteAndShiftData(inputFilename, buildUnitOwnerStartKey(), buildUnitOwnerEndKey(), byteData)
+	WriteDataAtOffset(inputFilename, GetOffset(buildUnitOwnerStartKey()), byteData)
 }
 
 func SetPlayerMaxCurrency(filename string, playerID int, currencyValue int) {
-	offset := fileOffsetMap[BuildPlayerStartKey(playerID)]
-	fmt.Printf("Player %d base offset: 0x%04X\n", playerID, offset)
-
-	// Currency values are at offsets +8, +12, +16 from player start
-	currencyOffsets := []int{8, 12, 16}
-	currencyNames := []string{"Currency 1", "Currency 2", "Currency 3"}
-
-	fmt.Println("Current currency values:")
-	for i, currencyOffset := range currencyOffsets {
-		fullOffset := offset + currencyOffset
-		oldValue := ReadUint16AtFileOffset(filename, fullOffset)
-		fmt.Printf("  %s: %d at offset 0x%04X\n", currencyNames[i], oldValue, fullOffset)
+	// Input validation
+	if playerID < 0 {
+		log.Fatal("Error: Player ID cannot be negative")
+	}
+	if currencyValue < 0 || currencyValue > 65535 {
+		log.Fatal(fmt.Sprintf("Error: Currency value %d is invalid. Must be between 0 and 65535", currencyValue))
 	}
 
+	offset := GetOffset(BuildPlayerStartKey(playerID))
+	fmt.Printf("Player %d base offset: 0x%04X\n", playerID, offset)
+
+	// Currency [3]uint32 starts at offset +8 and is 12 bytes total (3 * 4 bytes)
+	currencyStartOffset := offset + 8
+
+	fmt.Println("Current currency values:")
+	for i := 0; i < 3; i++ {
+		currencyOffset := currencyStartOffset + (i * 4) // Each uint32 is 4 bytes
+		oldValue := ReadUint32AtFileOffset(filename, currencyOffset)
+		fmt.Printf("  Currency %d: %d at offset 0x%04X\n", i+1, oldValue, currencyOffset)
+	}
+
+	// Write all three currency values as a contiguous block
+	currencyData := make([]byte, 12)                                         // 3 * uint32 = 12 bytes
+	binary.LittleEndian.PutUint32(currencyData[0:4], uint32(currencyValue))  // Currency[0]
+	binary.LittleEndian.PutUint32(currencyData[4:8], uint32(currencyValue))  // Currency[1]
+	binary.LittleEndian.PutUint32(currencyData[8:12], uint32(currencyValue)) // Currency[2]
+
+	// Use WriteDataAtOffset with calculated offset
+	WriteDataAtOffset(filename, currencyStartOffset, currencyData)
+
 	fmt.Println("Setting new currency values:")
-	for i, currencyOffset := range currencyOffsets {
-		fullOffset := offset + currencyOffset
-		oldValue := ReadUint16AtFileOffset(filename, fullOffset)
-		WriteUint16AtFileOffset(filename, fullOffset, currencyValue)
-		fmt.Printf("  %s: %d -> %d at offset 0x%04X\n", currencyNames[i], oldValue, currencyValue, fullOffset)
+	for i := 0; i < 3; i++ {
+		currencyOffset := currencyStartOffset + (i * 4)
+		fmt.Printf("  Currency %d: -> %d at offset 0x%04X\n", i+1, currencyValue, currencyOffset)
 	}
 
 	fmt.Printf("Set max currency to %d for player %d\n", currencyValue, playerID)
 }
 
 func SetPlayerMaxCityTech(filename string, saveOutput *WC4SaveOutput, playerID int, techLevel int) {
+	// Input validation
+	if playerID < 0 {
+		log.Fatal("Error: Player ID cannot be negative")
+	}
+	if techLevel < 0 || techLevel > 255 {
+		log.Fatal(fmt.Sprintf("Error: Tech level %d is invalid. Must be between 0 and 255", techLevel))
+	}
+	if playerID >= len(saveOutput.PlayerData) {
+		log.Fatal(fmt.Sprintf("Error: Player ID %d does not exist. Valid range: 0-%d", playerID, len(saveOutput.PlayerData)-1))
+	}
+
 	fmt.Printf("Setting max city tech to level %d for player %d\n", techLevel, playerID)
 	fmt.Println("Processing cities...")
 
+	// Process cities owned by the player
+	citiesModified := processPlayerCityTech(filename, saveOutput, playerID, techLevel)
+
+	fmt.Printf("Set max city tech to level %d for %d cities owned by player %d\n", techLevel, citiesModified, playerID)
+}
+
+// processPlayerCityTech processes cities owned by the specified player
+func processPlayerCityTech(filename string, saveOutput *WC4SaveOutput, playerID int, techLevel int) int {
 	citiesModified := 0
 	for i := 0; i < len(saveOutput.Cities); i++ {
 		city := saveOutput.Cities[i]
@@ -123,39 +157,98 @@ func SetPlayerMaxCityTech(filename string, saveOutput *WC4SaveOutput, playerID i
 			continue
 		}
 
-		offset := fileOffsetMap[BuildCityStartKey(i)]
+		offset := GetOffset(BuildCityStartKey(i))
 		cityName, hasName := GetCityName(city.CityId)
 		if !hasName {
 			cityName = "Unknown"
 		}
+
 		fmt.Printf("City %d: %s (ID:0x%02x) base offset: 0x%04X (owner: %d)\n", i, cityName, city.CityId, offset, owner)
 
-		// Tech levels are at offsets +24 to +29 (6 bytes)
-		techOffsets := []int{24, 25, 26, 27, 28, 29}
-		techNames := []string{"Tech 1", "Tech 2", "Tech 3", "Tech 4", "Tech 5", "Tech 6"}
-
-		fmt.Println("  Current tech levels:")
-		for j, techOffset := range techOffsets {
-			fullOffset := offset + techOffset
-			oldValue := ReadUint8AtFileOffset(filename, fullOffset)
-			fmt.Printf("    %s: %d at offset 0x%04X\n", techNames[j], oldValue, fullOffset)
-		}
-
-		fmt.Println("  Setting new tech levels:")
-		for j, techOffset := range techOffsets {
-			fullOffset := offset + techOffset
-			oldValue := ReadUint8AtFileOffset(filename, fullOffset)
-			WriteUint8AtFileOffset(filename, fullOffset, techLevel)
-			fmt.Printf("    %s: %d -> %d at offset 0x%04X\n", techNames[j], oldValue, techLevel, fullOffset)
-		}
+		// TechLevels [6]byte starts at offset +24
+		techStartOffset := offset + 24
+		updateCityTechLevels(filename, techStartOffset, techLevel)
 
 		citiesModified++
 	}
 
-	fmt.Printf("Set max city tech to level %d for %d cities owned by player %d\n", techLevel, citiesModified, playerID)
+	return citiesModified
+}
+
+// processEnemyCityTech processes cities owned by enemies
+func processEnemyCityTech(filename string, saveOutput *WC4SaveOutput, playerID int, playerTeamId uint32, techLevel int) int {
+	citiesModified := 0
+	
+	for i := 0; i < len(saveOutput.Cities); i++ {
+		city := saveOutput.Cities[i]
+		row, col, valid := ConvertCoordinates(int(city.CoordinateCode), saveOutput.UnitOwnerData, int(saveOutput.SaveHeader.GameMode))
+		if !valid {
+			continue
+		}
+
+		owner := saveOutput.UnitOwnerData[row][col]
+		if int(owner) >= len(saveOutput.PlayerData) {
+			continue
+		}
+
+		// Skip if owner is main player or ally
+		if int(owner) == playerID || saveOutput.PlayerData[owner].TeamId == playerTeamId {
+			continue
+		}
+
+		offset := GetOffset(BuildCityStartKey(i))
+		cityName, hasName := GetCityName(city.CityId)
+		if !hasName {
+			cityName = "Unknown"
+		}
+
+		player := saveOutput.PlayerData[owner]
+		countryName, _ := GetCountryInfo(player.CountryId)
+		fmt.Printf("City %d: %s (owner: Player %d - %s) - Minimizing tech\n", i, cityName, owner, countryName)
+
+		// TechLevels [6]byte starts at offset +24
+		techStartOffset := offset + 24
+		updateCityTechLevels(filename, techStartOffset, techLevel)
+
+		citiesModified++
+	}
+
+	return citiesModified
+}
+
+// updateCityTechLevels updates the tech levels for a city at the given offset
+func updateCityTechLevels(filename string, techStartOffset int, techLevel int) {
+	fmt.Println("  Current tech levels:")
+	for j := 0; j < 6; j++ {
+		techOffset := techStartOffset + j
+		oldValue := ReadUint8AtFileOffset(filename, techOffset)
+		fmt.Printf("    Tech %d: %d at offset 0x%04X\n", j+1, oldValue, techOffset)
+	}
+
+	// Write all 6 tech levels as a contiguous block
+	techData := make([]byte, 6)
+	for j := 0; j < 6; j++ {
+		techData[j] = byte(techLevel)
+	}
+
+	WriteDataAtOffset(filename, techStartOffset, techData)
+
+	fmt.Println("  Setting new tech levels:")
+	for j := 0; j < 6; j++ {
+		techOffset := techStartOffset + j
+		fmt.Printf("    Tech %d: -> %d at offset 0x%04X\n", j+1, techLevel, techOffset)
+	}
 }
 
 func RestoreAlliesHealth(filename string, saveOutput *WC4SaveOutput, playerID int) {
+	// Input validation
+	if playerID < 0 {
+		log.Fatal("Error: Player ID cannot be negative")
+	}
+	if playerID >= len(saveOutput.PlayerData) {
+		log.Fatal(fmt.Sprintf("Error: Player ID %d does not exist. Valid range: 0-%d", playerID, len(saveOutput.PlayerData)-1))
+	}
+
 	playerTeamId := saveOutput.PlayerData[playerID].TeamId
 	fmt.Printf("Restoring health for allies of player %d (TeamId: %d)\n", playerID, playerTeamId)
 	fmt.Println("Processing units...")
@@ -220,10 +313,44 @@ func RestoreAlliesHealth(filename string, saveOutput *WC4SaveOutput, playerID in
 }
 
 func WeakenEnemies(filename string, saveOutput *WC4SaveOutput, playerID int) {
+	// Input validation
+	if playerID < 0 {
+		log.Fatal("Error: Player ID cannot be negative")
+	}
+	if playerID >= len(saveOutput.PlayerData) {
+		log.Fatal(fmt.Sprintf("Error: Player ID %d does not exist. Valid range: 0-%d", playerID, len(saveOutput.PlayerData)-1))
+	}
+
 	playerTeamId := saveOutput.PlayerData[playerID].TeamId
 	fmt.Printf("Weakening enemies of player %d (TeamId: %d)\n", playerID, playerTeamId)
-	fmt.Println("Processing units...")
 
+	// First, minimize enemy money
+	fmt.Println("Minimizing enemy money...")
+	enemiesWeakened := 0
+	for i := 0; i < len(saveOutput.PlayerData); i++ {
+		if i == playerID || saveOutput.PlayerData[i].TeamId == playerTeamId {
+			continue // Skip main player and allies
+		}
+
+		player := saveOutput.PlayerData[i]
+		countryName, _ := GetCountryInfo(player.CountryId)
+		fmt.Printf("Player %d (%s): Minimizing currency\n", i, countryName)
+
+		// Use the same logic as SetPlayerMaxCurrency but with value 0
+		SetPlayerMaxCurrency(filename, i, 0)
+		enemiesWeakened++
+	}
+
+	fmt.Printf("Minimized money for %d enemy players\n", enemiesWeakened)
+
+	// Then, minimize enemy city tech levels
+	fmt.Println("\nMinimizing enemy city tech levels...")
+	citiesWeakened := processEnemyCityTech(filename, saveOutput, playerID, playerTeamId, 0)
+
+	fmt.Printf("Minimized tech for %d enemy cities\n", citiesWeakened)
+
+	// Finally, weaken enemy units
+	fmt.Println("\nProcessing units...")
 	unitsWeakened := 0
 	unitsByPlayer := make(map[byte][]UnitDisplayInfo) // Track unit info by player
 	unitsByType := make(map[uint8]int)                // Track unit types
@@ -312,7 +439,7 @@ func WeakenEnemies(filename string, saveOutput *WC4SaveOutput, playerID int) {
 		fmt.Printf("Type %d (%s): %d units\n", unitType, unitTypeName, count)
 	}
 
-	fmt.Printf("\nWeakened enemies. Changed %d units to have low health.\n", unitsWeakened)
+	fmt.Printf("\nWeakened enemies. Minimized money for %d players, tech for %d cities, and reduced %d units to low health.\n", enemiesWeakened, citiesWeakened, unitsWeakened)
 }
 
 func ConvertCoordinates(coordinateCode int, unitOwnerData [][]byte, gameMode int) (int, int, bool) {
@@ -362,6 +489,20 @@ func ConvertCoordinatesWithDebug(coordinateCode int, unitOwnerData [][]byte, gam
 
 // ConvertPlayer converts all units owned by oldPlayer to newPlayer
 func ConvertPlayer(inputFilename string, saveOutput *WC4SaveOutput, oldPlayer, newPlayer int) *ConversionStats {
+	// Input validation
+	if oldPlayer < 0 || newPlayer < 0 {
+		log.Fatal("Error: Player IDs cannot be negative")
+	}
+	if oldPlayer >= len(saveOutput.PlayerData) {
+		log.Fatal(fmt.Sprintf("Error: Old player ID %d does not exist. Valid range: 0-%d", oldPlayer, len(saveOutput.PlayerData)-1))
+	}
+	if newPlayer >= len(saveOutput.PlayerData) {
+		log.Fatal(fmt.Sprintf("Error: New player ID %d does not exist. Valid range: 0-%d", newPlayer, len(saveOutput.PlayerData)-1))
+	}
+	if oldPlayer == newPlayer {
+		log.Fatal("Error: Old player and new player cannot be the same")
+	}
+
 	stats := NewConversionStats()
 
 	for i := 0; i < len(saveOutput.UnitOwnerData); i++ {
@@ -384,6 +525,20 @@ func ConvertPlayer(inputFilename string, saveOutput *WC4SaveOutput, oldPlayer, n
 
 // ConvertTile converts a specific tile at (x, y) to newPlayer
 func ConvertTile(inputFilename string, saveOutput *WC4SaveOutput, x, y, newPlayer int) error {
+	// Input validation
+	if x < 0 || y < 0 {
+		return fmt.Errorf("coordinates cannot be negative: (%d, %d)", x, y)
+	}
+	if y >= len(saveOutput.UnitOwnerData) || x >= len(saveOutput.UnitOwnerData[0]) {
+		return fmt.Errorf("coordinates out of bounds: (%d, %d). Map size: %dx%d", x, y, len(saveOutput.UnitOwnerData[0]), len(saveOutput.UnitOwnerData))
+	}
+	if newPlayer < 0 {
+		return fmt.Errorf("new player ID cannot be negative: %d", newPlayer)
+	}
+	if newPlayer >= len(saveOutput.PlayerData) {
+		return fmt.Errorf("new player ID %d does not exist. Valid range: 0-%d", newPlayer, len(saveOutput.PlayerData)-1)
+	}
+
 	oldPlayer := saveOutput.UnitOwnerData[y][x]
 	if oldPlayer == TileUnowned {
 		return fmt.Errorf("can't convert tile at (%v, %v) - tile has no owner", y, x)
@@ -423,11 +578,26 @@ func ConvertAllAllies(inputFilename string, saveOutput *WC4SaveOutput) *Conversi
 // ConvertTeam converts all players to the same team as player 0
 func ConvertTeam(inputFilename string, saveOutput *WC4SaveOutput) {
 	playerTeamId := saveOutput.PlayerData[MainPlayer].TeamId
+	convertedCount := 0
+
+	fmt.Println("Converting all players to team", playerTeamId)
+	fmt.Println("----------------------------------------")
+
 	for i := 1; i < len(saveOutput.PlayerData); i++ {
-		offset := GetFileOffsetMap()[BuildPlayerStartKey(i)]
-		WriteUint32AtFileOffset(inputFilename, offset+24, int(playerTeamId))
-		fmt.Println("Converting player", i, "from team", saveOutput.PlayerData[i].TeamId, "to team", playerTeamId)
+		oldTeamId := saveOutput.PlayerData[i].TeamId
+		if oldTeamId != playerTeamId {
+			offset := GetFileOffsetMap()[BuildPlayerStartKey(i)]
+			WriteUint32AtFileOffset(inputFilename, offset+24, int(playerTeamId))
+
+			player := saveOutput.PlayerData[i]
+			countryName, _ := GetCountryInfo(player.CountryId)
+			fmt.Printf("Player %d (%s): Team %d → Team %d\n", i, countryName, oldTeamId, playerTeamId)
+			convertedCount++
+		}
 	}
+
+	fmt.Println("----------------------------------------")
+	fmt.Printf("Team conversion completed: %d players converted to team %d\n", convertedCount, playerTeamId)
 }
 
 // ConvertAllPlayers converts all units to player 0

@@ -135,6 +135,7 @@ type WC4SaveOutput struct {
 	UnitOwnerData [][]byte
 	Cities        []CityData
 	Units         []UnitData
+	Landmines     []LandmineData
 }
 
 func DeserializeMapHeaderFromBytes(streamReader *io.SectionReader) SaveHeader {
@@ -246,14 +247,17 @@ func DeserializeUnitDataFromBytes(streamReader *io.SectionReader, count int) []U
 	return allUnits
 }
 
-func DeserializeLandmineDataFromBytes(streamReader *io.SectionReader, count int) {
+func DeserializeLandmineDataFromBytes(streamReader *io.SectionReader, count int) []LandmineData {
+	var landmines []LandmineData
 	for i := 0; i < count; i++ {
 		landmineData := LandmineData{}
 		if err := binary.Read(streamReader, binary.LittleEndian, &landmineData); err != nil {
 			log.Fatal("Failed to load landmine data: ", err)
 		}
 		debugPrint("Landmine: %+v\n", landmineData)
+		landmines = append(landmines, landmineData)
 	}
+	return landmines
 }
 
 func DeserializeUnknownData2FromBytes(streamReader *io.SectionReader, count int) {
@@ -385,7 +389,7 @@ func ReadSaveFile(inputFilename string) (*WC4SaveOutput, error) {
 	allUnits := DeserializeUnitDataFromBytes(streamReader, int(saveHeader.UnitCount))
 
 	debugPrintSection(10, "LANDMINES")
-	DeserializeLandmineDataFromBytes(streamReader, int(saveHeader.LandmineCount))
+	allLandmines := DeserializeLandmineDataFromBytes(streamReader, int(saveHeader.LandmineCount))
 
 	debugPrintSection(11, "UNKNOWN DATA SECTIONS")
 	DeserializeUnknownData2FromBytes(streamReader, int(saveHeader.UnknownCount1))
@@ -403,6 +407,7 @@ func ReadSaveFile(inputFilename string) (*WC4SaveOutput, error) {
 		UnitOwnerData: unitOwnerData,
 		Cities:        allCities,
 		Units:         allUnits,
+		Landmines:     allLandmines,
 	}
 
 	// Print file summary with byte ranges

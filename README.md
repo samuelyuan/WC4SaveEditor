@@ -22,19 +22,27 @@ There are various commands to modify the save file.
 Make sure you quit your current game and go to the main menu before overwriting the save file. If you overwrite the file while the game is still in progress, the game will overwrite the file when you leave and none of your new changes will apply.
 
 Read Commands:
-* list-players
-* list-player-tiles
-* list-cities
-* list-units
-* list-generals
+* list-players: Display all players with country information, team membership, and unit counts
+* list-cities: Show all cities with their positions and ownership details
+* list-units: Display all military units grouped by owner with detailed unit information
+* list-units-by-map: Analyze unit distribution across the map
+* list-tiles: Show city tile ownership analysis with territory control statistics
+* list-generals: Display all units with assigned generals
+* list-landmines: Show all landmines grouped by owner with position and health data
 
 Write Commands:
 * max-money: Sets max currency to 9999.
 * max-city-tech: Sets all city tech levels to level 4.
-* restore-allies: Heal all of your units and your allies units.
-* weaken-enemy: Reduce all enemy units to have 1 health and all enemy cities to have 0 health.
-* convert-player: Convert all tiles owned by one player and assign ownership to another player. May crash game.
-* convert-tile: Convert one tile and assign ownership to another player. May crash game.
-* convert-all-allies: Convert all allied tiles to be your own tiles. May crash game.
-* convert-team: Convert all players to be on the same team.
-* convert-all-players: Convert all tiles to be your tiles. May crash game.
+* heal-allies: Heal all of your units and your allies units.
+* weaken-enemies: Minimize all enemy money to 0, reduce all enemy city tech to 0, and reduce all enemy units to have 1 health and all enemy cities to have 0 health.
+* transfer-units: Convert all tiles owned by one player and assign ownership to another player (interactive). May crash game.
+* transfer-tile: Convert one tile and assign ownership to another player (interactive). May crash game.
+* convert-allies-to-main-player: Convert all allied tiles to be your own tiles. May crash game.
+* unite-team: Convert all players to be on the same team.
+* conquer-all: Convert all tiles to be your tiles. May crash game.
+
+## Usage Examples
+
+```bash
+# Template: WC4SaveEditor.exe -input <savefile> -command <command>
+```
