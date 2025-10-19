@@ -79,6 +79,8 @@ func GetGeneralName(generalId uint16) (string, bool) {
 		return "Arnold", true
 	case 29036:
 		return "Bradley", true
+	case 29037:
+		return "Patton", true
 	case 29038:
 		return "Crerar", true
 	case 29039:
@@ -261,6 +263,34 @@ func GetGeneralName(generalId uint16) (string, bool) {
 		return "Chung", true
 	case 29155:
 		return "Choe", true
+	case 29156:
+		return "Osborn", true
+	case 29157:
+		return "Williams", true
+	case 29158:
+		return "Coulson", true
+	case 29159:
+		return "Wagner", true
+	case 29160:
+		return "Yudintsev", true
+	case 29161:
+		return "Gaiman", true
+	case 29162:
+		return "Kotick", true
+	case 29163:
+		return "Guillemot", true
+	case 29164:
+		return "Maldini", true
+	case 29165:
+		return "Morita", true
+	case 29166:
+		return "Benteke", true
+	case 29167:
+		return "Wu.R", true
+	case 29168:
+		return "Owairan", true
+	case 29169:
+		return "Davis", true
 	default:
 		return "", false
 	}

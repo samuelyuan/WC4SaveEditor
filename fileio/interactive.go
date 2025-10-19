@@ -146,7 +146,7 @@ func findAllUnitTiles(saveOutput *WC4SaveOutput) []UnitTileInfo {
 	for i := 0; i < len(saveOutput.UnitOwnerData); i++ {
 		for j := 0; j < len(saveOutput.UnitOwnerData[i]); j++ {
 			owner := saveOutput.UnitOwnerData[i][j]
-			if owner != 255 { // Skip unowned tiles
+			if owner != TileUnowned { // Skip unowned tiles
 				unitInfo := identifyUnitAtLocation(saveOutput, i, j, owner)
 				unitTiles = append(unitTiles, unitInfo)
 			}

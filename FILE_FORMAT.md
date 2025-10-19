@@ -123,7 +123,7 @@ Information about each unit on the map.
 | MoraleTurnsLeft | uint16 | 2 | Turns remaining for morale effect |
 | UnknownArr6 | [21]byte | 21 | Unknown byte array |
 
-**Total Size: 48 bytes per unit**
+**Total Size: 64 bytes per unit**
 
 ## Landmine Data (LandmineData)
 

@@ -235,7 +235,7 @@ func DeserializeCityDataFromBytes(streamReader *io.SectionReader, count int) []C
 func DeserializeUnitDataFromBytes(streamReader *io.SectionReader, count int) []UnitData {
 	allUnits := make([]UnitData, count)
 	for i := 0; i < count; i++ {
-		updateFileOffsetMapForField(fileOffsetMap, streamReader, BuildUnitHealthKey(i), 12)
+		updateFileOffsetMapForField(fileOffsetMap, streamReader, BuildUnitStartKey(i), 0)
 
 		unitData := UnitData{}
 		if err := binary.Read(streamReader, binary.LittleEndian, &unitData); err != nil {

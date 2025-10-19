@@ -29,15 +29,16 @@ Read Commands:
 * list-tiles: Show city tile ownership analysis with territory control statistics
 * list-generals: Display all units with assigned generals
 * list-landmines: Show all landmines grouped by owner with position and health data
+* list-teams: Display team analysis with player counts, territories, and alliance structure
 
 Write Commands:
 * max-money: Sets max currency to 9999.
 * max-city-tech: Sets all city tech levels to level 4.
 * heal-allies: Heal all of your units and your allies units.
 * weaken-enemies: Minimize all enemy money to 0, reduce all enemy city tech to 0, and reduce all enemy units to have 1 health and all enemy cities to have 0 health.
-* transfer-units: Convert all tiles owned by one player and assign ownership to another player (interactive). May crash game.
+* conquer-player: Conquer all territories from a specific player (interactive). May crash game.
 * transfer-tile: Convert one tile and assign ownership to another player (interactive). May crash game.
-* convert-allies-to-main-player: Convert all allied tiles to be your own tiles. May crash game.
+* conquer-allies: Conquer all allied territories and make them yours. May crash game.
 * unite-team: Convert all players to be on the same team.
 * conquer-all: Convert all tiles to be your tiles. May crash game.
 

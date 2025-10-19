@@ -26,8 +26,8 @@ func BuildCityStartKey(index int) string {
 	return fmt.Sprintf("CityStart%v", index)
 }
 
-func BuildUnitHealthKey(index int) string {
-	return fmt.Sprintf("UnitHealth%v", index)
+func BuildUnitStartKey(index int) string {
+	return fmt.Sprintf("UnitStart%v", index)
 }
 
 func GetFileOffsetMap() map[string]int {

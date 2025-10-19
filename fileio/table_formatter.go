@@ -21,7 +21,6 @@ type UnitTableData struct {
 	Level    int
 	Health   string
 	Position string
-	City     string
 }
 
 type GeneralTableData struct {
@@ -82,6 +81,16 @@ type LandmineTableData struct {
 	Position   string
 	Owner      string
 	Health     string
+}
+
+type TeamAnalysisData struct {
+	TeamID       int
+	PlayerCount  int
+	CityCount    int
+	UnitCount    int
+	LandPercent  float64
+	WorldPercent float64
+	Players      []string
 }
 
 // ColumnConfig defines the configuration for a table column
@@ -209,7 +218,7 @@ func (tf *TableFormatter) printBottomBorder(headers []ColumnConfig) {
 func (tf *TableFormatter) PrintPlayerTable(players []PlayerTableData) {
 	headers := []ColumnConfig{
 		{"Player", 8, "right"},
-		{"Country", 17, "left"},
+		{"Country", 20, "left"},
 		{"Country ID", 13, "right"},
 		{"Team", 8, "right"},
 		{"Units Owned", 13, "right"},
@@ -238,7 +247,6 @@ func (tf *TableFormatter) PrintUnitTable(units []UnitTableData) {
 		{"Level", 7, "right"},
 		{"Health", 9, "right"},
 		{"Position", 13, "right"},
-		{"City", 13, "left"},
 	}
 
 	var data [][]string
@@ -249,7 +257,6 @@ func (tf *TableFormatter) PrintUnitTable(units []UnitTableData) {
 			fmt.Sprintf("%d", unit.Level),
 			unit.Health,
 			unit.Position,
-			unit.City,
 		}
 		data = append(data, row)
 	}
@@ -264,7 +271,7 @@ func (tf *TableFormatter) PrintGeneralTable(generals []GeneralTableData) {
 		{"Type", 21, "left"},
 		{"General", 13, "left"},
 		{"Level", 7, "right"},
-		{"Health", 9, "right"},
+		{"Health", 11, "right"},
 		{"Position", 13, "right"},
 	}
 
@@ -360,9 +367,9 @@ func (tf *TableFormatter) PrintCityTileTable(cities []CityTileData) {
 // PrintTerritoryControlTable prints a table for territory control data
 func (tf *TableFormatter) PrintTerritoryControlTable(territories []TerritoryControlData) {
 	headers := []ColumnConfig{
-		{"Player", 7, "right"},
+		{"Player", 9, "right"},
 		{"Country", 15, "left"},
-		{"Country ID", 11, "right"},
+		{"Country ID", 13, "right"},
 		{"Tiles", 8, "right"},
 		{"Land %", 8, "right"},
 		{"World %", 9, "right"},
@@ -377,6 +384,42 @@ func (tf *TableFormatter) PrintTerritoryControlTable(territories []TerritoryCont
 			fmt.Sprintf("%d", territory.TileCount),
 			fmt.Sprintf("%.1f%%", territory.LandPercent),
 			fmt.Sprintf("%.1f%%", territory.WorldPercent),
+		}
+		data = append(data, row)
+	}
+
+	tf.PrintTable(headers, data)
+}
+
+// HealAlliesUnitData represents a unit in the heal-allies breakdown
+type HealAlliesUnitData struct {
+	UnitID    int
+	UnitType  string
+	Level     int
+	OldHealth int
+	NewHealth int
+	Position  string
+}
+
+// PrintHealAlliesTable prints a table for heal-allies unit breakdown
+func (tf *TableFormatter) PrintHealAlliesTable(units []HealAlliesUnitData) {
+	headers := []ColumnConfig{
+		{"Unit", 6, "right"},
+		{"Type", 30, "left"},
+		{"Level", 8, "right"},
+		{"Health", 12, "right"},
+		{"Position", 12, "center"},
+	}
+
+	var data [][]string
+	for _, unit := range units {
+		healthStr := fmt.Sprintf("%d->%d", unit.OldHealth, unit.NewHealth)
+		row := []string{
+			fmt.Sprintf("%d", unit.UnitID),
+			unit.UnitType,
+			fmt.Sprintf("%d", unit.Level),
+			healthStr,
+			unit.Position,
 		}
 		data = append(data, row)
 	}
@@ -408,14 +451,14 @@ func (tf *TableFormatter) PrintTeamTerritoryControlTable(teams []TeamTerritoryDa
 	}
 
 	tf.PrintTable(headers, data)
-	
+
 	// Then print team member details separately
 	fmt.Println("\nTeam Member Details:")
 	fmt.Println("-------------------")
 	for _, team := range teams {
-		fmt.Printf("Team %d (%d players, %d tiles, %.1f%% land, %.1f%% world):\n", 
+		fmt.Printf("Team %d (%d players, %d tiles, %.1f%% land, %.1f%% world):\n",
 			team.TeamID, team.PlayerCount, team.TileCount, team.LandPercent, team.WorldPercent)
-		
+
 		// Print players in groups of 5 for better readability
 		for i := 0; i < len(team.Players); i += 5 {
 			end := i + 5
@@ -443,6 +486,33 @@ func (tf *TableFormatter) PrintLandmineTable(landmines []LandmineTableData) {
 			fmt.Sprintf("%d", landmine.LandmineID),
 			landmine.Position,
 			landmine.Health,
+		}
+		data = append(data, row)
+	}
+
+	tf.PrintTable(headers, data)
+}
+
+// PrintTeamAnalysisTable prints a table for team analysis data
+func (tf *TableFormatter) PrintTeamAnalysisTable(teams []TeamAnalysisData) {
+	headers := []ColumnConfig{
+		{"Team", 8, "right"},
+		{"Players", 10, "right"},
+		{"Cities", 8, "right"},
+		{"Units", 8, "right"},
+		{"Land %", 10, "right"},
+		{"World %", 11, "right"},
+	}
+
+	var data [][]string
+	for _, team := range teams {
+		row := []string{
+			fmt.Sprintf("%d", team.TeamID),
+			fmt.Sprintf("%d", team.PlayerCount),
+			fmt.Sprintf("%d", team.CityCount),
+			fmt.Sprintf("%d", team.UnitCount),
+			fmt.Sprintf("%.1f%%", team.LandPercent),
+			fmt.Sprintf("%.1f%%", team.WorldPercent),
 		}
 		data = append(data, row)
 	}

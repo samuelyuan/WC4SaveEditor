@@ -27,10 +27,10 @@ func showHelp() {
 	fmt.Println("Usage: WC4SaveEditor.exe -input <savefile> -command <command>")
 	fmt.Println("")
 	fmt.Println("Commands:")
-	fmt.Println("  list-players, list-cities, list-units, list-units-by-map, list-tiles, list-generals, list-landmines")
+	fmt.Println("  list-players, list-cities, list-units, list-units-by-map, list-tiles, list-generals, list-landmines, list-teams")
 	fmt.Println("  max-money, max-city-tech, heal-allies, weaken-enemies")
-	fmt.Println("  transfer-units (interactive), transfer-tile (interactive)")
-	fmt.Println("  convert-allies-to-main-player, unite-team, conquer-all")
+	fmt.Println("  conquer-player (interactive), transfer-tile (interactive)")
+	fmt.Println("  conquer-allies, unite-team, conquer-all")
 	fmt.Println("")
 	fmt.Println("Use -help to show this message")
 }
@@ -78,6 +78,8 @@ func main() {
 		fileio.ListGenerals(saveOutput)
 	} else if command == "list-landmines" {
 		fileio.ListLandmines(saveOutput)
+	} else if command == "list-teams" {
+		fileio.ListTeams(saveOutput)
 	} else if command == "max-money" {
 		fileio.SetPlayerMaxCurrency(inputFilename, 0, 9999)
 	} else if command == "max-city-tech" {
@@ -86,13 +88,13 @@ func main() {
 		fileio.RestoreAlliesHealth(inputFilename, saveOutput, 0)
 	} else if command == "weaken-enemies" {
 		fileio.WeakenEnemies(inputFilename, saveOutput, 0)
-	} else if command == "transfer-units" {
+	} else if command == "conquer-player" {
 		fileio.InteractiveConvertPlayer(inputFilename, saveOutput)
 	} else if command == "transfer-tile" {
 		fileio.InteractiveConvertTile(inputFilename, saveOutput)
-	} else if command == "convert-allies-to-main-player" {
+	} else if command == "conquer-allies" {
 		stats := fileio.ConvertAllAllies(inputFilename, saveOutput)
-		stats.PrintSummary("Convert Allies to Main Player", saveOutput)
+		stats.PrintSummary("Conquer Allies", saveOutput)
 	} else if command == "unite-team" {
 		fileio.ConvertTeam(inputFilename, saveOutput)
 	} else if command == "conquer-all" {

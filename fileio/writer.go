@@ -178,7 +178,7 @@ func processPlayerCityTech(filename string, saveOutput *WC4SaveOutput, playerID 
 // processEnemyCityTech processes cities owned by enemies
 func processEnemyCityTech(filename string, saveOutput *WC4SaveOutput, playerID int, playerTeamId uint32, techLevel int) int {
 	citiesModified := 0
-	
+
 	for i := 0; i < len(saveOutput.Cities); i++ {
 		city := saveOutput.Cities[i]
 		row, col, valid := ConvertCoordinates(int(city.CoordinateCode), saveOutput.UnitOwnerData, int(saveOutput.SaveHeader.GameMode))
@@ -270,7 +270,7 @@ func RestoreAlliesHealth(filename string, saveOutput *WC4SaveOutput, playerID in
 			continue
 		}
 
-		offset := fileOffsetMap[BuildUnitHealthKey(unitInfo.Index)]
+		offset := fileOffsetMap[BuildUnitStartKey(unitInfo.Index)] + 12
 		oldHealth := ReadUint16AtFileOffset(filename, offset)
 
 		fmt.Printf("Unit %d: Restoring health %d -> %d at offset 0x%04X (owner: %d)\n",
@@ -284,6 +284,7 @@ func RestoreAlliesHealth(filename string, saveOutput *WC4SaveOutput, playerID in
 	// Print breakdown by player
 	fmt.Println("\nBreakdown by Player:")
 	fmt.Println("-------------------")
+	tableFormatter := NewTableFormatter()
 	sortedPlayerIDs := GetSortedPlayerIDs(saveOutput.PlayerData)
 	for _, ownerID := range sortedPlayerIDs {
 		unitInfos, exists := unitsByPlayer[byte(ownerID)]
@@ -296,17 +297,33 @@ func RestoreAlliesHealth(filename string, saveOutput *WC4SaveOutput, playerID in
 			fmt.Printf(" (skipped %d invalid units)", skippedCount)
 		}
 		fmt.Println()
+
+		// Prepare data for table
+		var healAlliesData []HealAlliesUnitData
 		for _, unitInfo := range unitInfos {
 			unitTypeName := GetUnitTypeName(unitInfo.Unit.UnitType)
-			cityInfo := ""
+			unitTypeStr := fmt.Sprintf("%d (%s)", unitInfo.Unit.UnitType, unitTypeName)
+
+			// Add city name in parentheses if it's a city unit
 			if unitInfo.Unit.UnitType == UnitTypeCity {
-				// Try to find the city name by looking for a city at the same position
 				cityName := GetCityNameAtPosition(unitInfo.Row, unitInfo.Col, saveOutput)
-				cityInfo = fmt.Sprintf(" (%s)", cityName)
+				if cityName != "" {
+					unitTypeStr = fmt.Sprintf("%d (%s) - [%s]", unitInfo.Unit.UnitType, unitTypeName, cityName)
+				}
 			}
-			fmt.Printf("  Unit %d: Type=%d (%s)%s, Level=%d, Health=%d->%d, Position=(%d,%d)\n",
-				unitInfo.Index, unitInfo.Unit.UnitType, unitTypeName, cityInfo, unitInfo.Unit.Level, unitInfo.Unit.CurrentHealth, unitInfo.Unit.MaxHealth, unitInfo.Row, unitInfo.Col)
+
+			healAlliesData = append(healAlliesData, HealAlliesUnitData{
+				UnitID:    unitInfo.Index,
+				UnitType:  unitTypeStr,
+				Level:     int(unitInfo.Unit.Level),
+				OldHealth: int(unitInfo.Unit.CurrentHealth),
+				NewHealth: int(unitInfo.Unit.MaxHealth),
+				Position:  fmt.Sprintf("(%d,%d)", unitInfo.Row, unitInfo.Col),
+			})
 		}
+
+		tableFormatter.PrintHealAlliesTable(healAlliesData)
+		fmt.Println()
 	}
 
 	fmt.Printf("\nRestored allies health. Changed %d units to have max health.\n", unitsRestored)
@@ -370,7 +387,7 @@ func WeakenEnemies(filename string, saveOutput *WC4SaveOutput, playerID int) {
 			continue // Skip allies
 		}
 
-		offset := fileOffsetMap[BuildUnitHealthKey(unitInfo.Index)]
+		offset := fileOffsetMap[BuildUnitStartKey(unitInfo.Index)] + 12
 		oldHealth := ReadUint16AtFileOffset(filename, offset)
 
 		var newHealth int
