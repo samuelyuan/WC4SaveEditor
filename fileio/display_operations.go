@@ -416,7 +416,11 @@ func ListCities(saveOutput *WC4SaveOutput) {
 			for _, cityInfo := range cities {
 				cityName, hasName := GetCityName(cityInfo.City.CityId)
 				if !hasName {
-					cityName = "Unknown"
+					if cityInfo.City.CityId > 0 {
+						cityName = fmt.Sprintf("City ID %d", cityInfo.City.CityId)
+					} else {
+						cityName = "Unknown"
+					}
 				}
 				positionStr := fmt.Sprintf("(%d,%d)", cityInfo.Row, cityInfo.Col)
 

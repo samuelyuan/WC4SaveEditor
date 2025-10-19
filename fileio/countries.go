@@ -35,7 +35,7 @@ var countryCodes = []CountryInfo{
 	{0x17, "Hungary", "facd8c"},
 	{0x18, "Romania", "ffeba5"},
 	{0x19, "Bulgaria", "649678"},
-	{0x1a, "Switzerland", "ff6984"},
+	{0x1a, "Switzerland", "9aa588"},
 	{0x1b, "Greece", "cdffff"},
 	{0x1c, "Turkey", "a59678"},
 	{0x1d, "Saudi Arabia", "009a00"},

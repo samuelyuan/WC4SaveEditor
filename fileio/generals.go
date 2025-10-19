@@ -9,6 +9,30 @@ func GetGeneralName(generalId uint16) (string, bool) {
 		return "Kimmel", true
 	case 25199:
 		return "Pavlov", true
+	case 25200:
+		return "Tolbukhin", true
+	case 25201:
+		return "Yeryomenko", true
+	case 25202:
+		return "Vasily", true
+	case 25203:
+		return "Weygand", true
+	case 25204:
+		return "Sikorski", true
+	case 25205:
+		return "Mikawa", true
+	case 25206:
+		return "Higuchi", true
+	case 25207:
+		return "Richthofen", true
+	case 25208:
+		return "Arnim", true
+	case 25209:
+		return "Schmidhuber", true
+	case 25210:
+		return "Manstein", true
+	case 25211:
+		return "Kuznetsov", true
 	case 25212:
 		return "Abrams", true
 	case 25217:
@@ -31,6 +55,8 @@ func GetGeneralName(generalId uint16) (string, bool) {
 		return "Alexander", true
 	case 29009:
 		return "Montgomery", true
+	case 29010:
+		return "Auchinleck", true
 	case 29011:
 		return "Messe", true
 	case 29012:
@@ -73,6 +99,8 @@ func GetGeneralName(generalId uint16) (string, bool) {
 		return "Eisenhower", true
 	case 29032:
 		return "Nimitz", true
+	case 29033:
+		return "Halsey", true
 	case 29034:
 		return "Fletcher", true
 	case 29035:
@@ -93,6 +121,8 @@ func GetGeneralName(generalId uint16) (string, bool) {
 		return "Leclerc", true
 	case 29043:
 		return "Bock", true
+	case 29044:
+		return "Heinrici", true
 	case 29045:
 		return "Rundstedt", true
 	case 29046:
@@ -115,18 +145,34 @@ func GetGeneralName(generalId uint16) (string, bool) {
 		return "Blamey", true
 	case 29055:
 		return "Nasser", true
+	case 29056:
+		return "Goring", true
 	case 29057:
 		return "Brauchitsch", true
+	case 29058:
+		return "Raeder", true
+	case 29059:
+		return "List", true
 	case 29060:
 		return "Student", true
 	case 29061:
 		return "Schorner", true
+	case 29062:
+		return "Weichs", true
 	case 29063:
 		return "Kuchler", true
+	case 29064:
+		return "Kleist", true
 	case 29065:
 		return "Manteuffel", true
 	case 29066:
 		return "Keitel", true
+	case 29067:
+		return "Witzleben", true
+	case 29068:
+		return "Greim", true
+	case 29069:
+		return "Kluge", true
 	case 29070:
 		return "Paulus", true
 	case 29071:
@@ -155,10 +201,16 @@ func GetGeneralName(generalId uint16) (string, bool) {
 		return "Meretskov", true
 	case 29083:
 		return "Novikov", true
+	case 29084:
+		return "Sokolovsky", true
 	case 29085:
 		return "Shaposhnikov", true
+	case 29086:
+		return "Isakov", true
 	case 29087:
 		return "Voroshilov", true
+	case 29088:
+		return "Budyonny", true
 	case 29089:
 		return "Antonescu", true
 	case 29090:
@@ -185,6 +237,8 @@ func GetGeneralName(generalId uint16) (string, bool) {
 		return "Dill", true
 	case 29101:
 		return "Portal", true
+	case 29102:
+		return "Dempsey", true
 	case 29103:
 		return "Papagos", true
 	case 29104:
@@ -209,6 +263,8 @@ func GetGeneralName(generalId uint16) (string, bool) {
 		return "Koga", true
 	case 29114:
 		return "Koiso", true
+	case 29115:
+		return "Yamaguchi", true
 	case 29116:
 		return "Toyoda", true
 	case 29117:
@@ -223,12 +279,18 @@ func GetGeneralName(generalId uint16) (string, bool) {
 		return "Liang.X.C", true
 	case 29122:
 		return "Du.Y.M", true
+	case 29123:
+		return "Zhang.L.F", true
 	case 29124:
 		return "Chen.S.K", true
 	case 29125:
 		return "Lin.B", true
 	case 29126:
 		return "Xu.S.Y", true
+	case 29127:
+		return "Liu.B.C", true
+	case 29128:
+		return "Xu.X.Q", true
 	case 29129:
 		return "Phibun", true
 	case 29130:
@@ -239,18 +301,34 @@ func GetGeneralName(generalId uint16) (string, bool) {
 		return "Franco", true
 	case 29133:
 		return "Clark", true
+	case 29134:
+		return "Spruance", true
+	case 29135:
+		return "Krueger", true
 	case 29136:
 		return "Devers", true
 	case 29137:
 		return "Eaker", true
+	case 29138:
+		return "Doolittle", true
 	case 29139:
 		return "Smith", true
 	case 29140:
 		return "King", true
 	case 29141:
 		return "Stilwell", true
+	case 29142:
+		return "Chennault", true
+	case 29143:
+		return "Kinkaid", true
 	case 29144:
 		return "Mitscher", true
+	case 29145:
+		return "McAuliffe", true
+	case 29146:
+		return "Lee", true
+	case 29147:
+		return "McCain", true
 	case 29148:
 		return "Simonds", true
 	case 29151:

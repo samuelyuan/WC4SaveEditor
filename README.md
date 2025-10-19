@@ -30,6 +30,7 @@ Read Commands:
 * list-generals: Display all units with assigned generals
 * list-landmines: Show all landmines grouped by owner with position and health data
 * list-teams: Display team analysis with player counts, territories, and alliance structure
+* visualize-map: Generate an SVG map visualization showing territories, cities, and units with hexagonal tiles
 
 Write Commands:
 * max-money: Sets max currency to 9999.

@@ -31,6 +31,7 @@ func showHelp() {
 	fmt.Println("  max-money, max-city-tech, heal-allies, weaken-enemies")
 	fmt.Println("  conquer-player (interactive), transfer-tile (interactive)")
 	fmt.Println("  conquer-allies, unite-team, conquer-all")
+	fmt.Println("  visualize-map")
 	fmt.Println("")
 	fmt.Println("Use -help to show this message")
 }
@@ -100,6 +101,14 @@ func main() {
 	} else if command == "conquer-all" {
 		stats := fileio.ConvertAllPlayers(inputFilename, saveOutput)
 		stats.PrintSummary("Conquer All Players", saveOutput)
+	} else if command == "visualize-map" {
+		outputPath := "map_visualization.svg"
+		err := fileio.VisualizeMap(saveOutput, outputPath)
+		if err != nil {
+			fmt.Printf("Error creating map visualization: %v\n", err)
+			return
+		}
+		fmt.Printf("Map visualization saved to: %s\n", outputPath)
 	} else {
 		fmt.Printf("Error: Unrecognized command '%s'\n", command)
 		fmt.Println("Use -help to see available commands")
