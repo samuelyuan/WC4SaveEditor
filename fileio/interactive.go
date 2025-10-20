@@ -61,7 +61,7 @@ func showAvailablePlayers(saveOutput *WC4SaveOutput) {
 	sortedPlayerIDs := GetSortedPlayerIDs(saveOutput.PlayerData)
 	for _, playerID := range sortedPlayerIDs {
 		player := saveOutput.PlayerData[playerID]
-		countryName, _ := GetCountryInfo(player.CountryId)
+		countryName, _ := GetCountryInfoFromData(player)
 		fmt.Printf("  %d: %s (CountryId %d, TeamId %d)\n", playerID, countryName, player.CountryId, player.TeamId)
 	}
 }
@@ -70,8 +70,8 @@ func showAvailablePlayers(saveOutput *WC4SaveOutput) {
 func showPlayerConversionPreview(saveOutput *WC4SaveOutput, oldPlayer, newPlayer int) bool {
 	oldPlayerData := saveOutput.PlayerData[oldPlayer]
 	newPlayerData := saveOutput.PlayerData[newPlayer]
-	oldCountryName, _ := GetCountryInfo(oldPlayerData.CountryId)
-	newCountryName, _ := GetCountryInfo(newPlayerData.CountryId)
+	oldCountryName, _ := GetCountryInfoFromData(oldPlayerData)
+	newCountryName, _ := GetCountryInfoFromData(newPlayerData)
 
 	fmt.Printf("\n=== Conversion Preview ===\n")
 	fmt.Printf("FROM: Player %d (%s - CountryId %d, TeamId %d)\n", oldPlayer, oldCountryName, oldPlayerData.CountryId, oldPlayerData.TeamId)
@@ -256,7 +256,7 @@ func selectTileFromList(unitTiles []UnitTileInfo, saveOutput *WC4SaveOutput) *Un
 func getOwnerDisplayName(owner byte, saveOutput *WC4SaveOutput) string {
 	if int(owner) < len(saveOutput.PlayerData) {
 		player := saveOutput.PlayerData[owner]
-		countryName, _ := GetCountryInfo(player.CountryId)
+		countryName, _ := GetCountryInfoFromData(player)
 		return fmt.Sprintf("P%d (%s)", owner, countryName)
 	}
 	return "Unknown"
@@ -273,7 +273,7 @@ func getUnitDisplayName(tile UnitTileInfo) string {
 // showTileConversionPreview shows conversion preview and returns true if user confirms
 func showTileConversionPreview(selectedTile *UnitTileInfo, newPlayer int, saveOutput *WC4SaveOutput) bool {
 	newPlayerData := saveOutput.PlayerData[newPlayer]
-	newCountryName, _ := GetCountryInfo(newPlayerData.CountryId)
+	newCountryName, _ := GetCountryInfoFromData(newPlayerData)
 
 	fmt.Printf("\n=== Conversion Preview ===\n")
 	displayName := getUnitDisplayName(*selectedTile)

@@ -245,7 +245,7 @@ func (tf *TableFormatter) PrintUnitTable(units []UnitTableData) {
 		{"Unit", 7, "right"},
 		{"Type", 21, "left"},
 		{"Level", 7, "right"},
-		{"Health", 9, "right"},
+		{"Health", 11, "right"},
 		{"Position", 13, "right"},
 	}
 

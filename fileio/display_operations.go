@@ -20,13 +20,6 @@ type TileInfo struct {
 	Row, Col int
 }
 
-// ProcessAllUnitsResult contains both valid units and statistics about skipped units
-type ProcessAllUnitsResult struct {
-	ValidUnits         []UnitDisplayInfo
-	SkippedUnits       map[byte]int // Count of skipped units per owner (invalid owner)
-	SkippedCoordinates int          // Count of units skipped due to invalid coordinates
-	TotalSkipped       int
-}
 
 // TileAnalysisResult contains the results of tile analysis
 type TileAnalysisResult struct {
@@ -63,26 +56,10 @@ func DisplayHeader(title string) {
 
 // DisplayPlayerInfo returns formatted player information string
 func DisplayPlayerInfo(playerID int, player CountryData, count int) string {
-	countryName, _ := GetCountryInfo(player.CountryId)
+	countryName, _ := GetCountryInfoFromData(player)
 	return fmt.Sprintf("Player %d (%s - CountryId %d) owns %d units", playerID, countryName, player.CountryId, count)
 }
 
-// DisplaySkipStatistics shows statistics about skipped items
-func DisplaySkipStatistics(skipped int, skippedByOwner map[byte]int, skippedCoordinates int) {
-	if skipped > 0 {
-		fmt.Printf("Skipped %d units due to invalid data\n", skipped)
-		if skippedCoordinates > 0 {
-			fmt.Printf("  %d units skipped due to invalid coordinates\n", skippedCoordinates)
-		}
-		if len(skippedByOwner) > 0 {
-			fmt.Println("  Skipped units by owner:")
-			for owner, count := range skippedByOwner {
-				fmt.Printf("    Owner %d: %d units skipped\n", owner, count)
-			}
-		}
-		fmt.Println()
-	}
-}
 
 // SortByCount sorts a slice of items by their count in descending order
 func SortByCount[T any](items []T, getCount func(T) int) {
@@ -166,31 +143,13 @@ func DisplayCoordinatesGrid(coordinates []string) {
 	}
 }
 
-// ProcessAllUnits processes all units and returns valid units with coordinates and skip statistics
-func ProcessAllUnits(saveOutput *WC4SaveOutput) ProcessAllUnitsResult {
+// ProcessAllUnits processes all units and returns valid units with coordinates
+func ProcessAllUnits(saveOutput *WC4SaveOutput) []UnitDisplayInfo {
 	var validUnits []UnitDisplayInfo
-	skippedUnits := make(map[byte]int)
-	skippedCoordinates := 0
-	totalSkipped := 0
 
-	for i := 0; i < len(saveOutput.Units); i++ {
-		unit := saveOutput.Units[i]
-		row, col, valid := ConvertCoordinates(int(unit.CoordinateCode), saveOutput.UnitOwnerData, int(saveOutput.SaveHeader.GameMode))
-		if !valid {
-			fmt.Printf("WARNING: Unit %d: skipping invalid coordinates (CoordinateCode=%d)\n", i, unit.CoordinateCode)
-			skippedCoordinates++
-			totalSkipped++
-			continue
-		}
+	for i, unit := range saveOutput.Units {
+		row, col, _ := ConvertCoordinates(int(unit.CoordinateCode), saveOutput.UnitOwnerData, int(saveOutput.SaveHeader.GameMode))
 		owner := saveOutput.UnitOwnerData[row][col]
-
-		// Check if owner is valid
-		if int(owner) >= len(saveOutput.PlayerData) {
-			fmt.Printf("WARNING: Unit %d: invalid owner %d, skipping\n", i, owner)
-			skippedUnits[owner]++
-			totalSkipped++
-			continue
-		}
 
 		validUnits = append(validUnits, UnitDisplayInfo{
 			Index: i,
@@ -201,12 +160,7 @@ func ProcessAllUnits(saveOutput *WC4SaveOutput) ProcessAllUnitsResult {
 		})
 	}
 
-	return ProcessAllUnitsResult{
-		ValidUnits:         validUnits,
-		SkippedUnits:       skippedUnits,
-		SkippedCoordinates: skippedCoordinates,
-		TotalSkipped:       totalSkipped,
-	}
+	return validUnits
 }
 
 // GroupUnitsByOwner groups units by their owner
@@ -247,7 +201,7 @@ func GroupPlayersByTeamWithStats(playerData []CountryData, unitCounts map[byte]i
 		}
 
 		// Add player data to team
-		countryName, _ := GetCountryInfo(player.CountryId)
+		countryName, _ := GetCountryInfoFromData(player)
 		teamData[teamId].PlayerCount++
 		teamData[teamId].CityCount += cityCounts[byte(i)]
 		teamData[teamId].UnitCount += unitCounts[byte(i)]
@@ -283,7 +237,7 @@ func GroupPlayersByTeamWithTerritory(playerData []CountryData, citiesByOwner map
 			}
 
 			// Add player data to team
-			countryName, _ := GetCountryInfo(player.CountryId)
+			countryName, _ := GetCountryInfoFromData(player)
 			teamData[teamId].PlayerCount++
 			teamData[teamId].TileCount += playerTiles
 			teamData[teamId].Players = append(teamData[teamId].Players, fmt.Sprintf("%d (%s)", ownerID, countryName))
@@ -329,7 +283,7 @@ func ListPlayers(saveOutput *WC4SaveOutput) {
 	var playerData []PlayerTableData
 	for _, i := range sortedPlayerIDs {
 		player := saveOutput.PlayerData[i]
-		countryName, _ := GetCountryInfo(player.CountryId)
+		countryName, _ := GetCountryInfoFromData(player)
 		playerData = append(playerData, PlayerTableData{
 			PlayerID:    i,
 			CountryName: countryName,
@@ -353,7 +307,7 @@ func ListPlayers(saveOutput *WC4SaveOutput) {
 		var teamData []PlayerTableData
 		for _, playerIndex := range playerIndices {
 			player := saveOutput.PlayerData[playerIndex]
-			countryName, _ := GetCountryInfo(player.CountryId)
+			countryName, _ := GetCountryInfoFromData(player)
 			teamData = append(teamData, PlayerTableData{
 				PlayerID:    playerIndex,
 				CountryName: countryName,
@@ -408,7 +362,7 @@ func ListCities(saveOutput *WC4SaveOutput) {
 	tableFormatter := NewTableFormatter()
 	for owner := byte(0); owner < byte(len(saveOutput.PlayerData)); owner++ {
 		if cities, exists := citiesByOwner[owner]; exists {
-			countryName, _ := GetCountryInfo(saveOutput.PlayerData[owner].CountryId)
+			countryName, _ := GetCountryInfoFromData(saveOutput.PlayerData[owner])
 			fmt.Printf("\nPlayer %d (%s - CountryId %d) owns %d cities:\n", owner, countryName, saveOutput.PlayerData[owner].CountryId, len(cities))
 
 			// Prepare data for table
@@ -441,11 +395,7 @@ func ListUnits(saveOutput *WC4SaveOutput) {
 	DisplayHeader(fmt.Sprintf("Units (Total: %d)", len(saveOutput.Units)))
 
 	// Process all units using common function
-	result := ProcessAllUnits(saveOutput)
-	validUnits := result.ValidUnits
-
-	// Show skip statistics
-	DisplaySkipStatistics(result.TotalSkipped, result.SkippedUnits, result.SkippedCoordinates)
+	validUnits := ProcessAllUnits(saveOutput)
 
 	// First, show linear list
 	fmt.Println("Linear List:")
@@ -461,11 +411,7 @@ func ListUnits(saveOutput *WC4SaveOutput) {
 	sortedPlayerIDs := GetSortedPlayerIDs(saveOutput.PlayerData)
 	for _, ownerID := range sortedPlayerIDs {
 		if units, exists := unitsByOwner[byte(ownerID)]; exists {
-			skippedCount := result.SkippedUnits[byte(ownerID)]
 			playerInfo := DisplayPlayerInfo(ownerID, saveOutput.PlayerData[ownerID], len(units))
-			if skippedCount > 0 {
-				playerInfo += fmt.Sprintf(" (skipped %d invalid units)", skippedCount)
-			}
 			fmt.Printf("\n%s:\n", playerInfo)
 
 			// Prepare data for table
@@ -504,25 +450,11 @@ func ListGenerals(saveOutput *WC4SaveOutput) {
 
 	// First, collect all generals with their information
 	var generals []UnitDisplayInfo
-	skippedGenerals := 0
 
-	for i := 0; i < len(saveOutput.Units); i++ {
-		unit := saveOutput.Units[i]
-		row, col, valid := ConvertCoordinates(int(unit.CoordinateCode), saveOutput.UnitOwnerData, int(saveOutput.SaveHeader.GameMode))
-		if !valid {
-			fmt.Printf("WARNING: Unit %d: invalid coordinates for general check (CoordinateCode=%d)\n", i, unit.CoordinateCode)
-			skippedGenerals++
-			continue
-		}
+	for i, unit := range saveOutput.Units {
 		if unit.GeneralId > 0 {
+			row, col, _ := ConvertCoordinates(int(unit.CoordinateCode), saveOutput.UnitOwnerData, int(saveOutput.SaveHeader.GameMode))
 			owner := saveOutput.UnitOwnerData[row][col]
-
-			// Check if owner is valid
-			if int(owner) >= len(saveOutput.PlayerData) {
-				fmt.Printf("WARNING: General unit %d: invalid owner %d, skipping\n", i, owner)
-				skippedGenerals++
-				continue
-			}
 
 			generals = append(generals, UnitDisplayInfo{
 				Index: i,
@@ -536,23 +468,14 @@ func ListGenerals(saveOutput *WC4SaveOutput) {
 
 	if len(generals) == 0 {
 		fmt.Println("No generals found.")
-		if skippedGenerals > 0 {
-			fmt.Printf("(Skipped %d units due to invalid data)\n", skippedGenerals)
-		}
 		return
-	}
-
-	// Show skip statistics
-	if skippedGenerals > 0 {
-		fmt.Printf("Skipped %d units due to invalid data\n", skippedGenerals)
-		fmt.Println()
 	}
 
 	// First, show linear list
 	fmt.Println("Linear List:")
 	for _, generalInfo := range generals {
 		unitTypeName := GetUnitTypeName(generalInfo.Unit.UnitType)
-		countryName, _ := GetCountryInfo(saveOutput.PlayerData[generalInfo.Owner].CountryId)
+		countryName, _ := GetCountryInfoFromData(saveOutput.PlayerData[generalInfo.Owner])
 		generalName, hasGeneralName := GetGeneralName(generalInfo.Unit.GeneralId)
 
 		generalInfoStr := fmt.Sprintf("GeneralId=%d", generalInfo.Unit.GeneralId)
@@ -574,7 +497,7 @@ func ListGenerals(saveOutput *WC4SaveOutput) {
 	sortedPlayerIDs := GetSortedPlayerIDs(saveOutput.PlayerData)
 	for _, ownerID := range sortedPlayerIDs {
 		if generalUnits, exists := generalsByOwner[byte(ownerID)]; exists {
-			countryName, _ := GetCountryInfo(saveOutput.PlayerData[ownerID].CountryId)
+			countryName, _ := GetCountryInfoFromData(saveOutput.PlayerData[ownerID])
 			fmt.Printf("\nPlayer %d (%s - CountryId %d) has %d generals:\n",
 				ownerID, countryName, saveOutput.PlayerData[ownerID].CountryId, len(generalUnits))
 
@@ -628,22 +551,9 @@ func ListLandmines(saveOutput *WC4SaveOutput) {
 
 	// Process landmines and group by owner
 	landminesByOwner := make(map[byte][]LandmineDisplayInfo)
-	skippedLandmines := 0
 
 	for i, landmine := range saveOutput.Landmines {
-		row, col, valid := ConvertCoordinates(int(landmine.CoordinateCode), saveOutput.UnitOwnerData, int(saveOutput.SaveHeader.GameMode))
-		if !valid {
-			fmt.Printf("WARNING: Landmine %d: skipping invalid coordinates (CoordinateCode=%d)\n", i, landmine.CoordinateCode)
-			skippedLandmines++
-			continue
-		}
-
-		// Check if owner is valid
-		if int(landmine.Owner) >= len(saveOutput.PlayerData) {
-			fmt.Printf("WARNING: Landmine %d: invalid owner %d, skipping\n", i, landmine.Owner)
-			skippedLandmines++
-			continue
-		}
+		row, col, _ := ConvertCoordinates(int(landmine.CoordinateCode), saveOutput.UnitOwnerData, int(saveOutput.SaveHeader.GameMode))
 
 		landminesByOwner[byte(landmine.Owner)] = append(landminesByOwner[byte(landmine.Owner)], LandmineDisplayInfo{
 			Index:    i,
@@ -653,18 +563,13 @@ func ListLandmines(saveOutput *WC4SaveOutput) {
 		})
 	}
 
-	// Show skip statistics
-	if skippedLandmines > 0 {
-		fmt.Printf("Skipped %d landmines due to invalid data\n", skippedLandmines)
-	}
-
 	// Display landmines grouped by owner
 	tableFormatter := NewTableFormatter()
 	sortedPlayerIDs := GetSortedPlayerIDs(saveOutput.PlayerData)
 	for _, ownerID := range sortedPlayerIDs {
 		if landmines, exists := landminesByOwner[byte(ownerID)]; exists {
 			player := saveOutput.PlayerData[ownerID]
-			countryName, _ := GetCountryInfo(player.CountryId)
+			countryName, _ := GetCountryInfoFromData(player)
 			fmt.Printf("\nPlayer %d (%s - CountryId %d) owns %d landmines:\n",
 				ownerID, countryName, player.CountryId, len(landmines))
 
@@ -690,10 +595,7 @@ func ListLandmines(saveOutput *WC4SaveOutput) {
 	// Add landmine summary
 	fmt.Println("\nLandmine Summary:")
 	fmt.Println("----------------")
-	totalValidLandmines := len(saveOutput.Landmines) - skippedLandmines
 	fmt.Printf("Total landmines: %d\n", len(saveOutput.Landmines))
-	fmt.Printf("Valid landmines: %d\n", totalValidLandmines)
-	fmt.Printf("Skipped landmines: %d\n", skippedLandmines)
 }
 
 // ListTeams displays team analysis with statistics
@@ -821,7 +723,7 @@ func ListUnitsByMap(saveOutput *WC4SaveOutput) {
 			player := saveOutput.PlayerData[ownerID]
 			percentage := float64(count) / float64(totalUnits) * 100
 
-			countryName, _ := GetCountryInfo(player.CountryId)
+			countryName, _ := GetCountryInfoFromData(player)
 			fmt.Printf("\nPlayer %d (%s - CountryId %d, TeamId %d) owns %d units (%.1f%% of total)\n",
 				ownerID, countryName, player.CountryId, player.TeamId, count, percentage)
 
@@ -902,31 +804,13 @@ func DisplayTileAnalysis(result TileAnalysisResult, saveOutput *WC4SaveOutput) {
 }
 
 // ProcessCitiesForTiles processes cities and groups them by owner for tile analysis
-func ProcessCitiesForTiles(saveOutput *WC4SaveOutput) (map[byte][]CityDisplayInfo, int, int, int) {
+func ProcessCitiesForTiles(saveOutput *WC4SaveOutput) map[byte][]CityDisplayInfo {
 	citiesByOwner := make(map[byte][]CityDisplayInfo)
-	totalCities := 0
-	validCities := 0
-	skippedCities := 0
 
-	for i := 0; i < len(saveOutput.Cities); i++ {
-		city := saveOutput.Cities[i]
-		totalCities++
-
-		row, col, valid := ConvertCoordinates(int(city.CoordinateCode), saveOutput.UnitOwnerData, int(saveOutput.SaveHeader.GameMode))
-		if !valid {
-			fmt.Printf("WARNING: City %d: skipping invalid coordinates (CoordinateCode=%d)\n", i, city.CoordinateCode)
-			skippedCities++
-			continue
-		}
-
+	for i, city := range saveOutput.Cities {
+		row, col, _ := ConvertCoordinates(int(city.CoordinateCode), saveOutput.UnitOwnerData, int(saveOutput.SaveHeader.GameMode))
 		owner := saveOutput.UnitOwnerData[row][col]
-		if int(owner) >= len(saveOutput.PlayerData) {
-			fmt.Printf("WARNING: City %d: invalid owner %d, skipping\n", i, owner)
-			skippedCities++
-			continue
-		}
 
-		validCities++
 		cityDisplayInfo := CityDisplayInfo{
 			Index: i,
 			City:  city,
@@ -936,7 +820,7 @@ func ProcessCitiesForTiles(saveOutput *WC4SaveOutput) (map[byte][]CityDisplayInf
 		citiesByOwner[owner] = append(citiesByOwner[owner], cityDisplayInfo)
 	}
 
-	return citiesByOwner, totalCities, validCities, skippedCities
+	return citiesByOwner
 }
 
 // DisplayCitiesByOwner shows cities grouped by owner with tile counts
@@ -962,7 +846,7 @@ func DisplayCitiesByOwner(saveOutput *WC4SaveOutput, citiesByOwner map[byte][]Ci
 			landPercentage := float64(totalTilesForPlayer) / float64(result.LandTiles) * 100
 			worldPercentage := float64(totalTilesForPlayer) / float64(result.TotalTiles) * 100
 
-			countryName, _ := GetCountryInfo(player.CountryId)
+			countryName, _ := GetCountryInfoFromData(player)
 			playerSummaryData = append(playerSummaryData, PlayerSummaryData{
 				PlayerID:     ownerID,
 				CountryName:  countryName,
@@ -983,7 +867,7 @@ func DisplayCitiesByOwner(saveOutput *WC4SaveOutput, citiesByOwner map[byte][]Ci
 	for _, ownerID := range sortedPlayerIDs {
 		if cities, exists := citiesByOwner[byte(ownerID)]; exists {
 			player := saveOutput.PlayerData[ownerID]
-			countryName, _ := GetCountryInfo(player.CountryId)
+			countryName, _ := GetCountryInfoFromData(player)
 
 			// Calculate total tiles for this player
 			totalTilesForPlayer := 0
@@ -1046,7 +930,7 @@ func DisplayTerritoryControl(saveOutput *WC4SaveOutput, citiesByOwner map[byte][
 			player := saveOutput.PlayerData[ownerID]
 			landPercentage := float64(playerTiles) / float64(result.LandTiles) * 100
 			worldPercentage := float64(playerTiles) / float64(result.TotalTiles) * 100
-			countryName, _ := GetCountryInfo(player.CountryId)
+			countryName, _ := GetCountryInfoFromData(player)
 
 			territoryData = append(territoryData, TerritoryControlData{
 				PlayerID:     ownerID,
@@ -1109,11 +993,9 @@ func ListTilesByOwner(saveOutput *WC4SaveOutput) {
 	DisplayTileAnalysis(result, saveOutput)
 
 	// Process cities and group by owner
-	citiesByOwner, totalCities, validCities, skippedCities := ProcessCitiesForTiles(saveOutput)
+	citiesByOwner := ProcessCitiesForTiles(saveOutput)
 
-	fmt.Printf("Total cities: %d\n", totalCities)
-	fmt.Printf("Valid cities: %d\n", validCities)
-	fmt.Printf("Skipped cities: %d\n", skippedCities)
+	fmt.Printf("Total cities: %d\n", len(saveOutput.Cities))
 
 	// Display cities grouped by owner
 	DisplayCitiesByOwner(saveOutput, citiesByOwner, result)

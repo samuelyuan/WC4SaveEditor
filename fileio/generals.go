@@ -3,8 +3,20 @@ package fileio
 // GetGeneralName returns a human-readable name for the general ID
 func GetGeneralName(generalId uint16) (string, bool) {
 	switch generalId {
+	case 25171:
+		return "Muhammad", true
+	case 25172:
+		return "Mahdi", true
+	case 25180:
+		return "Simo Hayha", true
 	case 25182:
 		return "Katukov", true
+	case 25184:
+		return "Anders", true
+	case 25185:
+		return "Juliusz", true
+	case 25188:
+		return "Horton", true
 	case 25191:
 		return "Kimmel", true
 	case 25199:
@@ -37,6 +49,18 @@ func GetGeneralName(generalId uint16) (string, bool) {
 		return "Abrams", true
 	case 25217:
 		return "Leslie", true
+	case 25224:
+		return "Helfrich", true
+	case 25259:
+		return "Papagos", true
+	case 25261:
+		return "Lhagvasuren", true
+	case 25263:
+		return "Alberto", true
+	case 25266:
+		return "Nasser", true
+	case 25317:
+		return "Qasim", true
 	case 29001:
 		return "Zhang.Z.Z", true
 	case 29002:

@@ -112,14 +112,9 @@ func (mv *MapVisualizer) generatePlayerColors() map[byte]string {
 	// Use country colors for each player
 	for i := 0; i < len(mv.SaveOutput.PlayerData); i++ {
 		player := mv.SaveOutput.PlayerData[i]
-		countryColor, exists := GetCountryColor(uint8(player.CountryId))
-		if exists {
-			// Add # prefix to make it a proper hex color
-			colors[byte(i)] = "#" + countryColor
-		} else {
-			// Fallback color for unknown countries
-			colors[byte(i)] = "#808080" // Gray
-		}
+		countryColor := GetCountryColorFromData(player)
+		// Add # prefix to make it a proper hex color
+		colors[byte(i)] = "#" + countryColor
 	}
 
 	return colors

@@ -44,13 +44,13 @@ func (cs *ConversionStats) PrintSummary(operation string, saveOutput *WC4SaveOut
 		for _, playerID := range sortedPlayerIDs {
 			if count, exists := cs.ChangesByPlayer[byte(playerID)]; exists {
 				player := saveOutput.PlayerData[playerID]
-				countryName, _ := GetCountryInfo(player.CountryId)
+				countryName, _ := GetCountryInfoFromData(player)
 				fmt.Printf("  Player %d (%s - CountryId %d): %d changes\n", playerID, countryName, player.CountryId, count)
 			}
 		}
 	}
 
-	fmt.Println("========================\n")
+	fmt.Println("========================")
 }
 
 func WriteUnitOwnerToFile(inputFilename string, value int, targetX int, targetY int) {
@@ -165,9 +165,7 @@ func processPlayerCityTech(filename string, saveOutput *WC4SaveOutput, playerID 
 
 		fmt.Printf("City %d: %s (ID:0x%02x) base offset: 0x%04X (owner: %d)\n", i, cityName, city.CityId, offset, owner)
 
-		// TechLevels [6]byte starts at offset +24
-		techStartOffset := offset + 24
-		updateCityTechLevels(filename, techStartOffset, techLevel)
+		updateCityTechLevels(filename, i, techLevel)
 
 		citiesModified++
 	}
@@ -196,19 +194,16 @@ func processEnemyCityTech(filename string, saveOutput *WC4SaveOutput, playerID i
 			continue
 		}
 
-		offset := GetOffset(BuildCityStartKey(i))
 		cityName, hasName := GetCityName(city.CityId)
 		if !hasName {
 			cityName = "Unknown"
 		}
 
 		player := saveOutput.PlayerData[owner]
-		countryName, _ := GetCountryInfo(player.CountryId)
+		countryName, _ := GetCountryInfoFromData(player)
 		fmt.Printf("City %d: %s (owner: Player %d - %s) - Minimizing tech\n", i, cityName, owner, countryName)
 
-		// TechLevels [6]byte starts at offset +24
-		techStartOffset := offset + 24
-		updateCityTechLevels(filename, techStartOffset, techLevel)
+		updateCityTechLevels(filename, i, techLevel)
 
 		citiesModified++
 	}
@@ -216,8 +211,12 @@ func processEnemyCityTech(filename string, saveOutput *WC4SaveOutput, playerID i
 	return citiesModified
 }
 
-// updateCityTechLevels updates the tech levels for a city at the given offset
-func updateCityTechLevels(filename string, techStartOffset int, techLevel int) {
+// updateCityTechLevels updates the tech levels for a city by its index
+func updateCityTechLevels(filename string, cityIndex int, techLevel int) {
+	offset := GetOffset(BuildCityStartKey(cityIndex))
+	// TechLevels [6]byte starts at offset +24
+	techStartOffset := offset + 24
+	
 	fmt.Println("  Current tech levels:")
 	for j := 0; j < 6; j++ {
 		techOffset := techStartOffset + j
@@ -257,8 +256,7 @@ func RestoreAlliesHealth(filename string, saveOutput *WC4SaveOutput, playerID in
 	unitsByPlayer := make(map[byte][]UnitDisplayInfo) // Track unit info by player
 
 	// Process all units using common function
-	result := ProcessAllUnits(saveOutput)
-	validUnits := result.ValidUnits
+	validUnits := ProcessAllUnits(saveOutput)
 
 	for _, unitInfo := range validUnits {
 		owner := unitInfo.Owner
@@ -291,12 +289,7 @@ func RestoreAlliesHealth(filename string, saveOutput *WC4SaveOutput, playerID in
 		if !exists || len(unitInfos) == 0 {
 			continue
 		}
-		skippedCount := result.SkippedUnits[byte(ownerID)]
-		fmt.Printf("Player %d: %d units restored", ownerID, len(unitInfos))
-		if skippedCount > 0 {
-			fmt.Printf(" (skipped %d invalid units)", skippedCount)
-		}
-		fmt.Println()
+		fmt.Printf("Player %d: %d units restored\n", ownerID, len(unitInfos))
 
 		// Prepare data for table
 		var healAlliesData []HealAlliesUnitData
@@ -350,7 +343,7 @@ func WeakenEnemies(filename string, saveOutput *WC4SaveOutput, playerID int) {
 		}
 
 		player := saveOutput.PlayerData[i]
-		countryName, _ := GetCountryInfo(player.CountryId)
+		countryName, _ := GetCountryInfoFromData(player)
 		fmt.Printf("Player %d (%s): Minimizing currency\n", i, countryName)
 
 		// Use the same logic as SetPlayerMaxCurrency but with value 0
@@ -373,8 +366,7 @@ func WeakenEnemies(filename string, saveOutput *WC4SaveOutput, playerID int) {
 	unitsByType := make(map[uint8]int)                // Track unit types
 
 	// Process all units using common function
-	result := ProcessAllUnits(saveOutput)
-	validUnits := result.ValidUnits
+	validUnits := ProcessAllUnits(saveOutput)
 
 	for _, unitInfo := range validUnits {
 		owner := unitInfo.Owner
@@ -418,12 +410,7 @@ func WeakenEnemies(filename string, saveOutput *WC4SaveOutput, playerID int) {
 		if !exists || len(unitInfos) == 0 {
 			continue
 		}
-		skippedCount := result.SkippedUnits[byte(ownerID)]
-		fmt.Printf("Player %d: %d units weakened", ownerID, len(unitInfos))
-		if skippedCount > 0 {
-			fmt.Printf(" (skipped %d invalid units)", skippedCount)
-		}
-		fmt.Println()
+		fmt.Printf("Player %d: %d units weakened\n", ownerID, len(unitInfos))
 		for _, unitInfo := range unitInfos {
 			unitTypeName := GetUnitTypeName(unitInfo.Unit.UnitType)
 			cityInfo := ""
@@ -607,7 +594,7 @@ func ConvertTeam(inputFilename string, saveOutput *WC4SaveOutput) {
 			WriteUint32AtFileOffset(inputFilename, offset+24, int(playerTeamId))
 
 			player := saveOutput.PlayerData[i]
-			countryName, _ := GetCountryInfo(player.CountryId)
+			countryName, _ := GetCountryInfoFromData(player)
 			fmt.Printf("Player %d (%s): Team %d → Team %d\n", i, countryName, oldTeamId, playerTeamId)
 			convertedCount++
 		}
