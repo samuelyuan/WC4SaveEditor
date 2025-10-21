@@ -2,32 +2,55 @@ package fileio
 
 import "fmt"
 
-// Unit type constants
 const (
-	UnitTypeLightInfantry      = 1  // Light Infantry
-	UnitTypeAssaultInfantry    = 2  // Assault Infantry
-	UnitTypeMotorizedInfantry  = 3  // Motorized Infantry
-	UnitTypeMechanizedInfantry = 4  // Mechanized Infantry
-	UnitTypeCommando           = 5  // Commando
-	UnitTypeArmoredCar         = 6  // Armored Car
-	UnitTypeLightTank          = 7  // Light Tank
-	UnitTypeMediumTank         = 8  // Medium Tank
-	UnitTypeHeavyTank          = 9  // Heavy Tank
-	UnitTypeSuperTank          = 10 // Super Tank
-	UnitTypeFieldArtillery     = 11 // Field Artillery
-	UnitTypeHowitzer           = 12 // Howitzer
-	UnitTypeRocketArtillery    = 13 // Rocket Artillery
-	UnitTypeSuperArtillery     = 14 // Super Artillery
-	UnitTypeSubmarine          = 15 // Submarine
-	UnitTypeDestroyer          = 16 // Destroyer
-	UnitTypeCruiser            = 17 // Cruiser
-	UnitTypeCarrier            = 18 // Carrier
-	UnitTypeSuperCarrier       = 19 // Super Carrier
-	UnitTypeBunker             = 35 // Bunker
-	UnitTypeLandFort           = 36 // Land Fort
-	UnitTypeCoastalArtillery   = 37 // Coastal Artillery
-	UnitTypeRocketLauncher     = 38 // Rocket Launcher
-	UnitTypeCity               = 39 // City
+	UnitTypeLightInfantry      = 1
+	UnitTypeAssaultInfantry    = 2
+	UnitTypeMotorizedInfantry  = 3
+	UnitTypeMechanizedInfantry = 4
+	UnitTypeCommando           = 5
+	UnitTypeArmoredCar         = 6
+	UnitTypeLightTank          = 7
+	UnitTypeMediumTank         = 8
+	UnitTypeHeavyTank          = 9
+	UnitTypeSuperTank          = 10
+	UnitTypeFieldArtillery     = 11
+	UnitTypeHowitzer           = 12
+	UnitTypeRocketArtillery    = 13
+	UnitTypeSuperArtillery     = 14
+	UnitTypeSubmarine          = 15
+	UnitTypeDestroyer          = 16
+	UnitTypeCruiser            = 17
+	UnitTypeCarrier            = 18
+	UnitTypeSuperCarrier       = 19
+	UnitTypeBunker             = 35
+	UnitTypeLandFort           = 36
+	UnitTypeCoastalArtillery   = 37
+	UnitTypeRocketLauncher     = 38
+	UnitTypeCity               = 39
+	UnitTypeBrandenburgers     = 48
+	UnitTypeHawkeyeForce       = 49
+	UnitTypeCombatMedic        = 50
+	UnitTypeM7Priest           = 51
+	UnitTypeHeavyGustav        = 52
+	UnitTypeBM21               = 53
+	UnitTypeT44                = 54
+	UnitTypeKingTiger          = 55
+	UnitTypeM26Pershing        = 56
+	UnitTypeTypeVIISubmarine   = 60
+	UnitTypeHMSPrinceOfWales   = 61
+	UnitTypeB4Howitzer         = 64
+	UnitTypeIS3HeavyTank       = 65
+	UnitTypeStukaZuFuss        = 66
+	UnitTypeEnterprise         = 70
+	UnitTypeRPGRocketeer       = 73
+	UnitTypeA41Centurion       = 74
+	UnitTypeAuF1               = 79
+	UnitTypeT72                = 80
+	UnitTypePhantomForce       = 82
+	UnitTypeM1A1Abrams         = 83
+	UnitTypeAH64Apache         = 85
+	UnitTypeM142Himars         = 91
+	UnitTypeDivineWrathMBT     = 92
 )
 
 // GetUnitTypeName returns a human-readable name for the unit type
@@ -81,6 +104,54 @@ func GetUnitTypeName(unitType uint8) string {
 		return "Rocket Launcher"
 	case UnitTypeCity:
 		return "City"
+	case UnitTypeBrandenburgers:
+		return "Brandenburgers"
+	case UnitTypeHawkeyeForce:
+		return "Hawkeye Force"
+	case UnitTypeCombatMedic:
+		return "Combat Medic"
+	case UnitTypeM7Priest:
+		return "M7 Priest"
+	case UnitTypeHeavyGustav:
+		return "Heavy Gustav"
+	case UnitTypeBM21:
+		return "BM-21"
+	case UnitTypeT44:
+		return "T-44"
+	case UnitTypeKingTiger:
+		return "King Tiger"
+	case UnitTypeM26Pershing:
+		return "M26 Pershing"
+	case UnitTypeTypeVIISubmarine:
+		return "Type VII Submarine"
+	case UnitTypeHMSPrinceOfWales:
+		return "HMS Prince of Wales"
+	case UnitTypeB4Howitzer:
+		return "B-4 Howitzer"
+	case UnitTypeIS3HeavyTank:
+		return "IS-3 Heavy Tank"
+	case UnitTypeStukaZuFuss:
+		return "Stuka zu Fuss"
+	case UnitTypeEnterprise:
+		return "Enterprise"
+	case UnitTypeRPGRocketeer:
+		return "RPG Rocketeer"
+	case UnitTypeA41Centurion:
+		return "A41 Centurion"
+	case UnitTypeAuF1:
+		return "AuF1"
+	case UnitTypeT72:
+		return "T-72"
+	case UnitTypePhantomForce:
+		return "Phantom Force"
+	case UnitTypeM1A1Abrams:
+		return "M1A1 Abrams"
+	case UnitTypeAH64Apache:
+		return "AH-64 Apache"
+	case UnitTypeM142Himars:
+		return "M142 Himars"
+	case UnitTypeDivineWrathMBT:
+		return "Divine Wrath MBT"
 	default:
 		return fmt.Sprintf("Unknown Type %d", unitType)
 	}

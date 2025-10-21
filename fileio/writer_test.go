@@ -113,11 +113,11 @@ func TestConvertToCoordinateCode(t *testing.T) {
 	}
 
 	tests := []struct {
-		name           string
-		row            int
-		col            int
-		gameMode       int
-		expectedCode   int
+		name         string
+		row          int
+		col          int
+		gameMode     int
+		expectedCode int
 	}{
 		{
 			name:         "Campaign mode - top-left",
@@ -182,23 +182,23 @@ func TestCoordinateRoundTrip(t *testing.T) {
 	}
 
 	gameModes := []int{GameModeCampaign, GameModeConquest}
-	
+
 	for _, gameMode := range gameModes {
 		for row := 0; row < len(unitOwnerData); row++ {
 			for col := 0; col < len(unitOwnerData[0]); col++ {
 				// Convert row,col to coordinate code
 				code := ConvertToCoordinateCode(row, col, unitOwnerData, gameMode)
-				
+
 				// Convert coordinate code back to row,col
 				resultRow, resultCol, valid := ConvertCoordinates(code, unitOwnerData, gameMode)
-				
+
 				if !valid {
 					t.Errorf("Round-trip conversion failed: (%d,%d) -> %d -> invalid", row, col, code)
 					continue
 				}
-				
+
 				if resultRow != row || resultCol != col {
-					t.Errorf("Round-trip conversion failed: (%d,%d) -> %d -> (%d,%d)", 
+					t.Errorf("Round-trip conversion failed: (%d,%d) -> %d -> (%d,%d)",
 						row, col, code, resultRow, resultCol)
 				}
 			}
@@ -209,53 +209,53 @@ func TestCoordinateRoundTrip(t *testing.T) {
 // Test with different map sizes
 func TestConvertCoordinatesDifferentSizes(t *testing.T) {
 	testCases := []struct {
-		name     string
-		width    int
-		height   int
-		code     int
-		gameMode int
-		expectedRow int
-		expectedCol int
+		name          string
+		width         int
+		height        int
+		code          int
+		gameMode      int
+		expectedRow   int
+		expectedCol   int
 		expectedValid bool
 	}{
 		{
-			name:     "1x1 map - Campaign",
-			width:    1,
-			height:   1,
-			code:     0,
-			gameMode: GameModeCampaign,
-			expectedRow: 0,
-			expectedCol: 0,
+			name:          "1x1 map - Campaign",
+			width:         1,
+			height:        1,
+			code:          0,
+			gameMode:      GameModeCampaign,
+			expectedRow:   0,
+			expectedCol:   0,
 			expectedValid: true,
 		},
 		{
-			name:     "1x1 map - Conquest",
-			width:    1,
-			height:   1,
-			code:     2, // 0 + 2*1
-			gameMode: GameModeConquest,
-			expectedRow: 0,
-			expectedCol: 0,
+			name:          "1x1 map - Conquest",
+			width:         1,
+			height:        1,
+			code:          2, // 0 + 2*1
+			gameMode:      GameModeConquest,
+			expectedRow:   0,
+			expectedCol:   0,
 			expectedValid: true,
 		},
 		{
-			name:     "2x2 map - Campaign",
-			width:    2,
-			height:   2,
-			code:     3,
-			gameMode: GameModeCampaign,
-			expectedRow: 1,
-			expectedCol: 1,
+			name:          "2x2 map - Campaign",
+			width:         2,
+			height:        2,
+			code:          3,
+			gameMode:      GameModeCampaign,
+			expectedRow:   1,
+			expectedCol:   1,
 			expectedValid: true,
 		},
 		{
-			name:     "2x2 map - Conquest",
-			width:    2,
-			height:   2,
-			code:     7, // 3 + 2*2
-			gameMode: GameModeConquest,
-			expectedRow: 1,
-			expectedCol: 1,
+			name:          "2x2 map - Conquest",
+			width:         2,
+			height:        2,
+			code:          7, // 3 + 2*2
+			gameMode:      GameModeConquest,
+			expectedRow:   1,
+			expectedCol:   1,
 			expectedValid: true,
 		},
 	}
@@ -267,7 +267,7 @@ func TestConvertCoordinatesDifferentSizes(t *testing.T) {
 			for i := range unitOwnerData {
 				unitOwnerData[i] = make([]byte, tc.width)
 			}
-			
+
 			row, col, valid := ConvertCoordinates(tc.code, unitOwnerData, tc.gameMode)
 			if valid != tc.expectedValid {
 				t.Errorf("ConvertCoordinates(%d, %d) valid = %v, want %v", tc.code, tc.gameMode, valid, tc.expectedValid)

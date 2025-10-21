@@ -194,11 +194,11 @@ func TestWriteUint8AtFileOffset(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			WriteUint8AtFileOffset(tempFile.Name(), tt.offset, tt.value)
-			
+
 			// Read back and verify
 			result := ReadUint8AtFileOffset(tempFile.Name(), tt.offset)
 			if result != tt.expected {
-				t.Errorf("WriteUint8AtFileOffset(%d, %d) wrote 0x%02X, want 0x%02X", 
+				t.Errorf("WriteUint8AtFileOffset(%d, %d) wrote 0x%02X, want 0x%02X",
 					tt.offset, tt.value, result, tt.expected)
 			}
 		})
@@ -250,11 +250,11 @@ func TestWriteUint16AtFileOffset(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			WriteUint16AtFileOffset(tempFile.Name(), tt.offset, tt.value)
-			
+
 			// Read back and verify
 			result := ReadUint16AtFileOffset(tempFile.Name(), tt.offset)
 			if result != tt.expected {
-				t.Errorf("WriteUint16AtFileOffset(%d, %d) wrote 0x%04X, want 0x%04X", 
+				t.Errorf("WriteUint16AtFileOffset(%d, %d) wrote 0x%04X, want 0x%04X",
 					tt.offset, tt.value, result, tt.expected)
 			}
 		})
@@ -306,11 +306,11 @@ func TestWriteUint32AtFileOffset(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			WriteUint32AtFileOffset(tempFile.Name(), tt.offset, tt.value)
-			
+
 			// Read back and verify
 			result := ReadUint32AtFileOffset(tempFile.Name(), tt.offset)
 			if result != tt.expected {
-				t.Errorf("WriteUint32AtFileOffset(%d, %d) wrote 0x%08X, want 0x%08X", 
+				t.Errorf("WriteUint32AtFileOffset(%d, %d) wrote 0x%08X, want 0x%08X",
 					tt.offset, tt.value, result, tt.expected)
 			}
 		})
@@ -362,16 +362,15 @@ func TestWriteDataAtOffset(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			WriteDataAtOffset(tempFile.Name(), tt.offset, tt.data)
-			
+
 			// Read back and verify
 			for i, expectedByte := range tt.expected {
 				result := ReadUint8AtFileOffset(tempFile.Name(), tt.offset+i)
 				if result != int(expectedByte) {
-					t.Errorf("WriteDataAtOffset(%d, %v) at position %d wrote 0x%02X, want 0x%02X", 
+					t.Errorf("WriteDataAtOffset(%d, %v) at position %d wrote 0x%02X, want 0x%02X",
 						tt.offset, tt.data, i, result, expectedByte)
 				}
 			}
 		})
 	}
 }
-

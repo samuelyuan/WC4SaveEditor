@@ -74,7 +74,7 @@ func main() {
 	} else if command == "list-units-by-map" {
 		fileio.ListUnitsByMap(saveOutput)
 	} else if command == "list-tiles" {
-		fileio.ListTilesByOwner(saveOutput)
+		fileio.ListTiles(saveOutput)
 	} else if command == "list-generals" {
 		fileio.ListGenerals(saveOutput)
 	} else if command == "list-landmines" {

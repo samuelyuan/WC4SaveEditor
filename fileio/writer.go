@@ -216,7 +216,7 @@ func updateCityTechLevels(filename string, cityIndex int, techLevel int) {
 	offset := GetOffset(BuildCityStartKey(cityIndex))
 	// TechLevels [6]byte starts at offset +24
 	techStartOffset := offset + 24
-	
+
 	fmt.Println("  Current tech levels:")
 	for j := 0; j < 6; j++ {
 		techOffset := techStartOffset + j
@@ -289,33 +289,38 @@ func RestoreAlliesHealth(filename string, saveOutput *WC4SaveOutput, playerID in
 		if !exists || len(unitInfos) == 0 {
 			continue
 		}
-		fmt.Printf("Player %d: %d units restored\n", ownerID, len(unitInfos))
+		player := saveOutput.PlayerData[ownerID]
+		countryName, _ := GetCountryInfoFromData(player)
+		fmt.Printf("Player %d (%s - CountryId %d): %d units restored\n", ownerID, countryName, player.CountryId, len(unitInfos))
 
-		// Prepare data for table
-		var healAlliesData []HealAlliesUnitData
+		// Inline heal allies table
+		columns := []ColumnDef{
+			{"Unit", "int", "right"},
+			{"Type", "string", "left"},
+			{"Level", "int", "right"},
+			{"Health", "string", "right"},
+			{"Position", "string", "center"},
+		}
+		var rows [][]interface{}
 		for _, unitInfo := range unitInfos {
 			unitTypeName := GetUnitTypeName(unitInfo.Unit.UnitType)
 			unitTypeStr := fmt.Sprintf("%d (%s)", unitInfo.Unit.UnitType, unitTypeName)
-
-			// Add city name in parentheses if it's a city unit
 			if unitInfo.Unit.UnitType == UnitTypeCity {
 				cityName := GetCityNameAtPosition(unitInfo.Row, unitInfo.Col, saveOutput)
 				if cityName != "" {
 					unitTypeStr = fmt.Sprintf("%d (%s) - [%s]", unitInfo.Unit.UnitType, unitTypeName, cityName)
 				}
 			}
-
-			healAlliesData = append(healAlliesData, HealAlliesUnitData{
-				UnitID:    unitInfo.Index,
-				UnitType:  unitTypeStr,
-				Level:     int(unitInfo.Unit.Level),
-				OldHealth: int(unitInfo.Unit.CurrentHealth),
-				NewHealth: int(unitInfo.Unit.MaxHealth),
-				Position:  fmt.Sprintf("(%d,%d)", unitInfo.Row, unitInfo.Col),
+			healthStr := fmt.Sprintf("%d->%d", unitInfo.Unit.CurrentHealth, unitInfo.Unit.MaxHealth)
+			rows = append(rows, []interface{}{
+				unitInfo.Index,
+				unitTypeStr,
+				int(unitInfo.Unit.Level),
+				healthStr,
+				fmt.Sprintf("(%d,%d)", unitInfo.Row, unitInfo.Col),
 			})
 		}
-
-		tableFormatter.PrintHealAlliesTable(healAlliesData)
+		tableFormatter.PrintTable(TableData{Columns: columns, Rows: rows})
 		fmt.Println()
 	}
 
@@ -401,7 +406,7 @@ func WeakenEnemies(filename string, saveOutput *WC4SaveOutput, playerID int) {
 		unitsWeakened++
 	}
 
-	// Print breakdown by player
+	// Print breakdown by player (table format)
 	fmt.Println("\nBreakdown by Player:")
 	fmt.Println("-------------------")
 	sortedPlayerIDs := GetSortedPlayerIDs(saveOutput.PlayerData)
@@ -410,14 +415,27 @@ func WeakenEnemies(filename string, saveOutput *WC4SaveOutput, playerID int) {
 		if !exists || len(unitInfos) == 0 {
 			continue
 		}
-		fmt.Printf("Player %d: %d units weakened\n", ownerID, len(unitInfos))
+		player := saveOutput.PlayerData[ownerID]
+		countryName, _ := GetCountryInfoFromData(player)
+		fmt.Printf("Player %d (%s - CountryId %d): %d units weakened\n", ownerID, countryName, player.CountryId, len(unitInfos))
+
+		tableFormatter := NewTableFormatter()
+		columns := []ColumnDef{
+			{"Unit", "int", "right"},
+			{"Type", "string", "left"},
+			{"Level", "int", "right"},
+			{"Health", "string", "right"},
+			{"Position", "string", "center"},
+		}
+		var rows [][]interface{}
 		for _, unitInfo := range unitInfos {
 			unitTypeName := GetUnitTypeName(unitInfo.Unit.UnitType)
-			cityInfo := ""
+			unitTypeStr := fmt.Sprintf("%d (%s)", unitInfo.Unit.UnitType, unitTypeName)
 			if unitInfo.Unit.UnitType == UnitTypeCity {
-				// Try to find the city name by looking for a city at the same position
 				cityName := GetCityNameAtPosition(unitInfo.Row, unitInfo.Col, saveOutput)
-				cityInfo = fmt.Sprintf(" (%s)", cityName)
+				if cityName != "" {
+					unitTypeStr = fmt.Sprintf("%d (%s) - [%s]", unitInfo.Unit.UnitType, unitTypeName, cityName)
+				}
 			}
 			var newHealth int
 			if unitInfo.Unit.UnitType == UnitTypeCity {
@@ -425,23 +443,34 @@ func WeakenEnemies(filename string, saveOutput *WC4SaveOutput, playerID int) {
 			} else {
 				newHealth = 1
 			}
-			fmt.Printf("  Unit %d: Type=%d (%s)%s, Level=%d, Health=%d->%d, Position=(%d,%d)\n",
-				unitInfo.Index, unitInfo.Unit.UnitType, unitTypeName, cityInfo, unitInfo.Unit.Level, unitInfo.Unit.CurrentHealth, newHealth, unitInfo.Row, unitInfo.Col)
+			healthStr := fmt.Sprintf("%d->%d", unitInfo.Unit.CurrentHealth, newHealth)
+			rows = append(rows, []interface{}{
+				unitInfo.Index,
+				unitTypeStr,
+				int(unitInfo.Unit.Level),
+				healthStr,
+				fmt.Sprintf("(%d,%d)", unitInfo.Row, unitInfo.Col),
+			})
 		}
+		tableFormatter.PrintTable(TableData{Columns: columns, Rows: rows})
 	}
 
-	// Print breakdown by unit type
+	// Print breakdown by unit type (table)
 	fmt.Println("\nBreakdown by Unit Type:")
 	fmt.Println("----------------------")
-
-	// Sort unit types in numeric ascending order
-	sortedUnitTypes := GetSortedUnitTypes(unitsByType)
-
-	for _, unitType := range sortedUnitTypes {
-		count := unitsByType[byte(unitType)]
-		unitTypeName := GetUnitTypeName(uint8(unitType))
-		fmt.Printf("Type %d (%s): %d units\n", unitType, unitTypeName, count)
+	// Reuse generic table formatter for type analysis
+	// Build a flat slice of all weakened unit infos
+	var weakenedUnits []UnitDisplayInfo
+	for _, ownerID := range sortedPlayerIDs {
+		if unitInfos, ok := unitsByPlayer[byte(ownerID)]; ok {
+			weakenedUnits = append(weakenedUnits, unitInfos...)
+		}
 	}
+	DisplayTypeAnalysis(weakenedUnits,
+		func(u UnitDisplayInfo) uint8 { return u.Unit.UnitType },
+		func(u UnitDisplayInfo) int { return 1 },
+		"weakened units",
+	)
 
 	fmt.Printf("\nWeakened enemies. Minimized money for %d players, tech for %d cities, and reduced %d units to low health.\n", enemiesWeakened, citiesWeakened, unitsWeakened)
 }

@@ -20,7 +20,6 @@ type TileInfo struct {
 	Row, Col int
 }
 
-
 // TileAnalysisResult contains the results of tile analysis
 type TileAnalysisResult struct {
 	CoordinateCodeCounts map[uint16]int
@@ -60,7 +59,6 @@ func DisplayPlayerInfo(playerID int, player CountryData, count int) string {
 	return fmt.Sprintf("Player %d (%s - CountryId %d) owns %d units", playerID, countryName, player.CountryId, count)
 }
 
-
 // SortByCount sorts a slice of items by their count in descending order
 func SortByCount[T any](items []T, getCount func(T) int) {
 	for i := 0; i < len(items); i++ {
@@ -97,27 +95,32 @@ func DisplayTypeAnalysis[T any](items []T, getType func(T) uint8, getCount func(
 
 	// Use table formatting for better display
 	tableFormatter := NewTableFormatter()
-	headers := []ColumnConfig{
-		{"Type", 6, "right"},
-		{"Unit Type", 25, "left"},
-		{"Count", 8, "right"},
-		{"Percentage", 12, "right"},
+	columns := []ColumnDef{
+		{"Type", "int", "right"},
+		{"Unit Type", "string", "left"},
+		{"Count", "int", "right"},
+		{"Percentage", "percent", "right"},
 	}
 
-	var data [][]string
-	totalItems := len(items)
+	var rows [][]interface{}
+	// Calculate total count by summing all type counts
+	totalCount := 0
 	for _, stat := range typeStats {
-		percentage := float64(stat.Count) / float64(totalItems) * 100
-		row := []string{
-			fmt.Sprintf("%d", stat.UnitType),
-			stat.Name,
-			fmt.Sprintf("%d", stat.Count),
-			fmt.Sprintf("%.1f%%", percentage),
-		}
-		data = append(data, row)
+		totalCount += stat.Count
 	}
 
-	tableFormatter.PrintTable(headers, data)
+	for _, stat := range typeStats {
+		percentage := float64(stat.Count) / float64(totalCount)
+		row := []interface{}{
+			stat.UnitType,
+			stat.Name,
+			stat.Count,
+			percentage,
+		}
+		rows = append(rows, row)
+	}
+
+	tableFormatter.PrintTable(TableData{Columns: columns, Rows: rows})
 }
 
 // DisplayCoordinatesGrid prints coordinates in a grid format (10 per row)
@@ -211,7 +214,6 @@ func GroupPlayersByTeamWithStats(playerData []CountryData, unitCounts map[byte]i
 	return teamData
 }
 
-// GroupPlayersByTeamWithTerritory groups players by team and calculates territory statistics
 func GroupPlayersByTeamWithTerritory(playerData []CountryData, citiesByOwner map[byte][]CityDisplayInfo, result TileAnalysisResult) map[uint32]*TeamTerritoryData {
 	teamData := make(map[uint32]*TeamTerritoryData)
 
@@ -277,23 +279,30 @@ func ListPlayers(saveOutput *WC4SaveOutput) {
 
 	// First, show linear list
 	fmt.Println("Linear List:")
-	sortedPlayerIDs := GetSortedPlayerIDs(saveOutput.PlayerData)
 
-	// Prepare data for table
-	var playerData []PlayerTableData
-	for _, i := range sortedPlayerIDs {
-		player := saveOutput.PlayerData[i]
-		countryName, _ := GetCountryInfoFromData(player)
-		playerData = append(playerData, PlayerTableData{
-			PlayerID:    i,
-			CountryName: countryName,
-			CountryID:   int(player.CountryId),
-			TeamID:      int(player.TeamId),
-			UnitsOwned:  countMap[byte(i)],
-		})
+	// Inline player table logic
+	columns := []ColumnDef{
+		{"Player", "int", "right"},
+		{"Country", "string", "left"},
+		{"Country ID", "int", "right"},
+		{"Team", "int", "right"},
+		{"Units Owned", "int", "right"},
 	}
 
-	tableFormatter.PrintPlayerTable(playerData)
+	var rows [][]interface{}
+	for i, player := range saveOutput.PlayerData {
+		countryName, _ := GetCountryInfoFromData(player)
+		row := []interface{}{
+			i,
+			countryName,
+			int(player.CountryId),
+			int(player.TeamId),
+			countMap[byte(i)],
+		}
+		rows = append(rows, row)
+	}
+
+	tableFormatter.PrintTable(TableData{Columns: columns, Rows: rows})
 
 	// Then, group players by TeamId
 	fmt.Println("\nGrouped by Team:")
@@ -303,40 +312,28 @@ func ListPlayers(saveOutput *WC4SaveOutput) {
 	for teamId, playerIndices := range playersByTeam {
 		fmt.Printf("\nTeam %d (%d players):\n", teamId, len(playerIndices))
 
-		// Prepare data for team table (without Team column)
-		var teamData []PlayerTableData
+		// Use custom table for team display (without Team column)
+		columns := []ColumnDef{
+			{"Player", "int", "right"},
+			{"Country", "string", "left"},
+			{"Country ID", "int", "right"},
+			{"Units Owned", "int", "right"},
+		}
+
+		var rows [][]interface{}
 		for _, playerIndex := range playerIndices {
 			player := saveOutput.PlayerData[playerIndex]
 			countryName, _ := GetCountryInfoFromData(player)
-			teamData = append(teamData, PlayerTableData{
-				PlayerID:    playerIndex,
-				CountryName: countryName,
-				CountryID:   int(player.CountryId),
-				TeamID:      int(player.TeamId),
-				UnitsOwned:  countMap[byte(playerIndex)],
-			})
-		}
-
-		// Use custom table for team display (without Team column)
-		headers := []ColumnConfig{
-			{"Player", 8, "right"},
-			{"Country", 17, "left"},
-			{"Country ID", 13, "right"},
-			{"Units Owned", 13, "right"},
-		}
-
-		var data [][]string
-		for _, player := range teamData {
-			row := []string{
-				fmt.Sprintf("%d", player.PlayerID),
-				player.CountryName,
-				fmt.Sprintf("%d", player.CountryID),
-				fmt.Sprintf("%d", player.UnitsOwned),
+			row := []interface{}{
+				playerIndex,
+				countryName,
+				int(player.CountryId),
+				countMap[byte(playerIndex)],
 			}
-			data = append(data, row)
+			rows = append(rows, row)
 		}
 
-		tableFormatter.PrintTable(headers, data)
+		tableFormatter.PrintTable(TableData{Columns: columns, Rows: rows})
 	}
 }
 
@@ -365,8 +362,13 @@ func ListCities(saveOutput *WC4SaveOutput) {
 			countryName, _ := GetCountryInfoFromData(saveOutput.PlayerData[owner])
 			fmt.Printf("\nPlayer %d (%s - CountryId %d) owns %d cities:\n", owner, countryName, saveOutput.PlayerData[owner].CountryId, len(cities))
 
-			// Prepare data for table
-			var cityData []CityTableData
+			// Inline city table
+			columns := []ColumnDef{
+				{"City", "int", "right"},
+				{"Name", "string", "left"},
+				{"Position", "string", "right"},
+			}
+			var rows [][]interface{}
 			for _, cityInfo := range cities {
 				cityName, hasName := GetCityName(cityInfo.City.CityId)
 				if !hasName {
@@ -377,15 +379,9 @@ func ListCities(saveOutput *WC4SaveOutput) {
 					}
 				}
 				positionStr := fmt.Sprintf("(%d,%d)", cityInfo.Row, cityInfo.Col)
-
-				cityData = append(cityData, CityTableData{
-					CityID:   cityInfo.Index,
-					CityName: cityName,
-					Position: positionStr,
-				})
+				rows = append(rows, []interface{}{cityInfo.Index, cityName, positionStr})
 			}
-
-			tableFormatter.PrintCityTable(cityData)
+			tableFormatter.PrintTable(TableData{Columns: columns, Rows: rows})
 		}
 	}
 }
@@ -414,24 +410,23 @@ func ListUnits(saveOutput *WC4SaveOutput) {
 			playerInfo := DisplayPlayerInfo(ownerID, saveOutput.PlayerData[ownerID], len(units))
 			fmt.Printf("\n%s:\n", playerInfo)
 
-			// Prepare data for table
-			var unitData []UnitTableData
+			tableFormatter := NewTableFormatter()
+			// Inline unit table
+			columns := []ColumnDef{
+				{"Unit", "int", "right"},
+				{"Type", "string", "left"},
+				{"Level", "int", "right"},
+				{"Health", "string", "right"},
+				{"Position", "string", "right"},
+			}
+			var rows [][]interface{}
 			for _, unitInfo := range units {
 				unitTypeName := GetUnitTypeName(unitInfo.Unit.UnitType)
 				healthStr := fmt.Sprintf("%d/%d", unitInfo.Unit.CurrentHealth, unitInfo.Unit.MaxHealth)
 				positionStr := fmt.Sprintf("(%d,%d)", unitInfo.Row, unitInfo.Col)
-
-				unitData = append(unitData, UnitTableData{
-					UnitID:   unitInfo.Index,
-					UnitType: unitTypeName,
-					Level:    int(unitInfo.Unit.Level),
-					Health:   healthStr,
-					Position: positionStr,
-				})
+				rows = append(rows, []interface{}{unitInfo.Index, unitTypeName, int(unitInfo.Unit.Level), healthStr, positionStr})
 			}
-
-			tableFormatter := NewTableFormatter()
-			tableFormatter.PrintUnitTable(unitData)
+			tableFormatter.PrintTable(TableData{Columns: columns, Rows: rows})
 		}
 	}
 
@@ -501,31 +496,29 @@ func ListGenerals(saveOutput *WC4SaveOutput) {
 			fmt.Printf("\nPlayer %d (%s - CountryId %d) has %d generals:\n",
 				ownerID, countryName, saveOutput.PlayerData[ownerID].CountryId, len(generalUnits))
 
-			// Prepare data for table
-			var generalData []GeneralTableData
+			tableFormatter := NewTableFormatter()
+			// Inline general table
+			columns := []ColumnDef{
+				{"Unit", "int", "right"},
+				{"Type", "string", "left"},
+				{"General", "string", "left"},
+				{"Level", "int", "right"},
+				{"Health", "string", "right"},
+				{"Position", "string", "right"},
+			}
+			var rows [][]interface{}
 			for _, generalInfo := range generalUnits {
 				unitTypeName := GetUnitTypeName(generalInfo.Unit.UnitType)
 				generalName, hasGeneralName := GetGeneralName(generalInfo.Unit.GeneralId)
 				healthStr := fmt.Sprintf("%d/%d", generalInfo.Unit.CurrentHealth, generalInfo.Unit.MaxHealth)
 				positionStr := fmt.Sprintf("(%d,%d)", generalInfo.Row, generalInfo.Col)
-
 				generalInfoStr := fmt.Sprintf("ID %d", generalInfo.Unit.GeneralId)
 				if hasGeneralName {
 					generalInfoStr = generalName
 				}
-
-				generalData = append(generalData, GeneralTableData{
-					UnitID:      generalInfo.Index,
-					UnitType:    unitTypeName,
-					GeneralName: generalInfoStr,
-					Level:       int(generalInfo.Unit.Level),
-					Health:      healthStr,
-					Position:    positionStr,
-				})
+				rows = append(rows, []interface{}{generalInfo.Index, unitTypeName, generalInfoStr, int(generalInfo.Unit.Level), healthStr, positionStr})
 			}
-
-			tableFormatter := NewTableFormatter()
-			tableFormatter.PrintGeneralTable(generalData)
+			tableFormatter.PrintTable(TableData{Columns: columns, Rows: rows})
 		}
 	}
 
@@ -550,17 +543,10 @@ func ListLandmines(saveOutput *WC4SaveOutput) {
 	}
 
 	// Process landmines and group by owner
-	landminesByOwner := make(map[byte][]LandmineDisplayInfo)
+	landminesByOwner := make(map[byte][]LandmineData)
 
-	for i, landmine := range saveOutput.Landmines {
-		row, col, _ := ConvertCoordinates(int(landmine.CoordinateCode), saveOutput.UnitOwnerData, int(saveOutput.SaveHeader.GameMode))
-
-		landminesByOwner[byte(landmine.Owner)] = append(landminesByOwner[byte(landmine.Owner)], LandmineDisplayInfo{
-			Index:    i,
-			Landmine: landmine,
-			Row:      row,
-			Col:      col,
-		})
+	for _, landmine := range saveOutput.Landmines {
+		landminesByOwner[byte(landmine.Owner)] = append(landminesByOwner[byte(landmine.Owner)], landmine)
 	}
 
 	// Display landmines grouped by owner
@@ -573,22 +559,20 @@ func ListLandmines(saveOutput *WC4SaveOutput) {
 			fmt.Printf("\nPlayer %d (%s - CountryId %d) owns %d landmines:\n",
 				ownerID, countryName, player.CountryId, len(landmines))
 
-			// Prepare data for table
-			var landmineData []LandmineTableData
-			for _, landmineInfo := range landmines {
-				positionStr := fmt.Sprintf("(%d,%d)", landmineInfo.Row, landmineInfo.Col)
-				ownerName := fmt.Sprintf("Player %d (%s)", ownerID, countryName)
-				healthStr := fmt.Sprintf("%d", landmineInfo.Landmine.Health)
-
-				landmineData = append(landmineData, LandmineTableData{
-					LandmineID: landmineInfo.Index,
-					Position:   positionStr,
-					Owner:      ownerName,
-					Health:     healthStr,
-				})
+			// Inline landmine table
+			columns := []ColumnDef{
+				{"ID", "int", "right"},
+				{"Position", "string", "center"},
+				{"Health", "string", "right"},
 			}
-
-			tableFormatter.PrintLandmineTable(landmineData)
+			var rows [][]interface{}
+			for i, landmine := range landmines {
+				row, col, _ := ConvertCoordinates(int(landmine.CoordinateCode), saveOutput.UnitOwnerData, int(saveOutput.SaveHeader.GameMode))
+				positionStr := fmt.Sprintf("(%d,%d)", row, col)
+				healthStr := fmt.Sprintf("%d", landmine.Health)
+				rows = append(rows, []interface{}{i, positionStr, healthStr})
+			}
+			tableFormatter.PrintTable(TableData{Columns: columns, Rows: rows})
 		}
 	}
 
@@ -642,8 +626,8 @@ func ListTeams(saveOutput *WC4SaveOutput) {
 	}
 
 	for _, team := range teamData {
-		landPercentage := float64(team.UnitCount) / float64(totalTiles) * 100
-		worldPercentage := float64(team.UnitCount) / float64(totalTiles) * 100
+		landPercentage := float64(team.UnitCount) / float64(totalTiles)
+		worldPercentage := float64(team.UnitCount) / float64(totalTiles)
 		team.LandPercent = landPercentage
 		team.WorldPercent = worldPercentage
 		teamAnalysisData = append(teamAnalysisData, *team)
@@ -656,14 +640,34 @@ func ListTeams(saveOutput *WC4SaveOutput) {
 
 	// Print team analysis table
 	tableFormatter := NewTableFormatter()
-	tableFormatter.PrintTeamAnalysisTable(teamAnalysisData)
+	// Inline team analysis table
+	columns := []ColumnDef{
+		{"Team", "int", "right"},
+		{"Players", "int", "right"},
+		{"Cities", "int", "right"},
+		{"Units", "int", "right"},
+		{"Land %", "percent", "right"},
+		{"World %", "percent", "right"},
+	}
+	var rows [][]interface{}
+	for _, team := range teamAnalysisData {
+		rows = append(rows, []interface{}{
+			team.TeamID,
+			team.PlayerCount,
+			team.CityCount,
+			team.UnitCount,
+			team.LandPercent,
+			team.WorldPercent,
+		})
+	}
+	tableFormatter.PrintTable(TableData{Columns: columns, Rows: rows})
 
 	// Print team member details
 	fmt.Println("\nTeam Member Details:")
 	fmt.Println("-------------------")
 	for _, team := range teamAnalysisData {
 		fmt.Printf("Team %d (%d players, %d cities, %d units, %.1f%% land, %.1f%% world):\n",
-			team.TeamID, team.PlayerCount, team.CityCount, team.UnitCount, team.LandPercent, team.WorldPercent)
+			team.TeamID, team.PlayerCount, team.CityCount, team.UnitCount, team.LandPercent*100, team.WorldPercent*100)
 
 		// Print players in groups of 5 for better readability
 		for i := 0; i < len(team.Players); i += 5 {
@@ -676,14 +680,6 @@ func ListTeams(saveOutput *WC4SaveOutput) {
 		}
 		fmt.Println()
 	}
-}
-
-// LandmineDisplayInfo represents a landmine with its display information
-type LandmineDisplayInfo struct {
-	Index    int
-	Landmine LandmineData
-	Row      int
-	Col      int
 }
 
 // ListUnitsByMap displays units by map analysis
@@ -791,7 +787,6 @@ func AnalyzeCityTiles(saveOutput *WC4SaveOutput) TileAnalysisResult {
 	}
 }
 
-// DisplayTileAnalysis shows the tile analysis results
 func DisplayTileAnalysis(result TileAnalysisResult, saveOutput *WC4SaveOutput) {
 	fmt.Println("\nCity Tiles Array Analysis:")
 	fmt.Println("--------------------------")
@@ -830,38 +825,39 @@ func DisplayCitiesByOwner(saveOutput *WC4SaveOutput, citiesByOwner map[byte][]Ci
 	tableFormatter := NewTableFormatter()
 	sortedPlayerIDs := GetSortedPlayerIDs(saveOutput.PlayerData)
 
-	// Prepare player summary data
-	var playerSummaryData []PlayerSummaryData
-	for _, ownerID := range sortedPlayerIDs {
-		if cities, exists := citiesByOwner[byte(ownerID)]; exists {
-			player := saveOutput.PlayerData[ownerID]
-
-			// Calculate total tiles for this player
-			totalTilesForPlayer := 0
-			for _, cityInfo := range cities {
-				tileCount := result.CoordinateCodeCounts[cityInfo.City.CoordinateCode]
-				totalTilesForPlayer += tileCount
-			}
-
-			landPercentage := float64(totalTilesForPlayer) / float64(result.LandTiles) * 100
-			worldPercentage := float64(totalTilesForPlayer) / float64(result.TotalTiles) * 100
-
-			countryName, _ := GetCountryInfoFromData(player)
-			playerSummaryData = append(playerSummaryData, PlayerSummaryData{
-				PlayerID:     ownerID,
-				CountryName:  countryName,
-				CountryID:    int(player.CountryId),
-				TeamID:       int(player.TeamId),
-				CityCount:    len(cities),
-				TotalTiles:   totalTilesForPlayer,
-				LandPercent:  landPercentage,
-				WorldPercent: worldPercentage,
-			})
+	// Print player summary table (inline)
+	{
+		columns := []ColumnDef{
+			{"Player", "int", "right"},
+			{"Country", "string", "left"},
+			{"Cities", "int", "right"},
+			{"Total Tiles", "int", "right"},
+			{"Land %", "percent", "right"},
+			{"World %", "percent", "right"},
 		}
+		var rows [][]interface{}
+		for _, ownerID := range sortedPlayerIDs {
+			if cities, exists := citiesByOwner[byte(ownerID)]; exists {
+				player := saveOutput.PlayerData[ownerID]
+				totalTilesForPlayer := 0
+				for _, cityInfo := range cities {
+					totalTilesForPlayer += result.CoordinateCodeCounts[cityInfo.City.CoordinateCode]
+				}
+				landPercentage := float64(totalTilesForPlayer) / float64(result.LandTiles)
+				worldPercentage := float64(totalTilesForPlayer) / float64(result.TotalTiles)
+				countryName, _ := GetCountryInfoFromData(player)
+				rows = append(rows, []interface{}{
+					ownerID,
+					countryName,
+					len(cities),
+					totalTilesForPlayer,
+					landPercentage,
+					worldPercentage,
+				})
+			}
+		}
+		tableFormatter.PrintTable(TableData{Columns: columns, Rows: rows})
 	}
-
-	// Print player summary table
-	tableFormatter.PrintPlayerSummaryTable(playerSummaryData)
 
 	// Print detailed city tables for each player
 	for _, ownerID := range sortedPlayerIDs {
@@ -876,40 +872,42 @@ func DisplayCitiesByOwner(saveOutput *WC4SaveOutput, citiesByOwner map[byte][]Ci
 				totalTilesForPlayer += tileCount
 			}
 
-			landPercentage := float64(totalTilesForPlayer) / float64(result.LandTiles) * 100
-			worldPercentage := float64(totalTilesForPlayer) / float64(result.TotalTiles) * 100
+			landPercentage := float64(totalTilesForPlayer) / float64(result.LandTiles)
+			worldPercentage := float64(totalTilesForPlayer) / float64(result.TotalTiles)
 
 			// Show detailed player summary with better formatting
 			fmt.Printf("\nPlayer %d: %s\n", ownerID, countryName)
 			fmt.Printf("  Country ID: %d, Team ID: %d\n", player.CountryId, player.TeamId)
 			fmt.Printf("  City Tiles: %d cities, %d total tiles\n", len(cities), totalTilesForPlayer)
-			fmt.Printf("  Territory: %.1f%% of land, %.1f%% of world\n", landPercentage, worldPercentage)
+			fmt.Printf("  Territory: %.1f%% of land, %.1f%% of world\n", landPercentage*100, worldPercentage*100)
 
-			// Prepare city data for table
-			var cityData []CityTileData
+			// Inline city tile table
+			columns := []ColumnDef{
+				{"City", "int", "right"},
+				{"Name", "string", "left"},
+				{"Position", "string", "center"},
+				{"Coord Code", "int", "right"},
+				{"Tile Count", "int", "right"},
+			}
+			var rows [][]interface{}
 			for _, cityInfo := range cities {
 				cityName, hasName := GetCityName(cityInfo.City.CityId)
 				if !hasName {
 					cityName = "Unknown"
 				}
-				tileCount := result.CoordinateCodeCounts[cityInfo.City.CoordinateCode]
-
-				cityData = append(cityData, CityTileData{
-					CityIndex:      cityInfo.Index,
-					CityName:       cityName,
-					CityID:         int(cityInfo.City.CityId),
-					Position:       fmt.Sprintf("(%d,%d)", cityInfo.Row, cityInfo.Col),
-					CoordinateCode: int(cityInfo.City.CoordinateCode),
-					TileCount:      tileCount,
+				rows = append(rows, []interface{}{
+					cityInfo.Index,
+					cityName,
+					fmt.Sprintf("(%d,%d)", cityInfo.Row, cityInfo.Col),
+					int(cityInfo.City.CoordinateCode),
+					result.CoordinateCodeCounts[cityInfo.City.CoordinateCode],
 				})
 			}
-
-			tableFormatter.PrintCityTileTable(cityData)
+			tableFormatter.PrintTable(TableData{Columns: columns, Rows: rows})
 		}
 	}
 }
 
-// DisplayTerritoryControl shows player territory control summary
 func DisplayTerritoryControl(saveOutput *WC4SaveOutput, citiesByOwner map[byte][]CityDisplayInfo, result TileAnalysisResult) {
 	fmt.Println("\nPlayer Territory Control:")
 	fmt.Println("------------------------")
@@ -918,8 +916,16 @@ func DisplayTerritoryControl(saveOutput *WC4SaveOutput, citiesByOwner map[byte][
 	totalOwnedTiles := 0
 	sortedPlayerIDs := GetSortedPlayerIDs(saveOutput.PlayerData)
 
-	// Prepare territory control data
-	var territoryData []TerritoryControlData
+	// Build and print territory control table inline (no struct)
+	columns := []ColumnDef{
+		{"Player", "int", "right"},
+		{"Country", "string", "left"},
+		{"Country ID", "int", "right"},
+		{"Tiles", "int", "right"},
+		{"Land %", "percent", "right"},
+		{"World %", "percent", "right"},
+	}
+	var rows [][]interface{}
 	for _, ownerID := range sortedPlayerIDs {
 		if cities, exists := citiesByOwner[byte(ownerID)]; exists {
 			playerTiles := 0
@@ -928,23 +934,19 @@ func DisplayTerritoryControl(saveOutput *WC4SaveOutput, citiesByOwner map[byte][
 			}
 			totalOwnedTiles += playerTiles
 			player := saveOutput.PlayerData[ownerID]
-			landPercentage := float64(playerTiles) / float64(result.LandTiles) * 100
-			worldPercentage := float64(playerTiles) / float64(result.TotalTiles) * 100
 			countryName, _ := GetCountryInfoFromData(player)
 
-			territoryData = append(territoryData, TerritoryControlData{
-				PlayerID:     ownerID,
-				CountryName:  countryName,
-				CountryID:    int(player.CountryId),
-				TileCount:    playerTiles,
-				LandPercent:  landPercentage,
-				WorldPercent: worldPercentage,
+			rows = append(rows, []interface{}{
+				ownerID,
+				countryName,
+				int(player.CountryId),
+				playerTiles,
+				float64(playerTiles) / float64(result.LandTiles),
+				float64(playerTiles) / float64(result.TotalTiles),
 			})
 		}
 	}
-
-	// Print individual player territory control table
-	tableFormatter.PrintTerritoryControlTable(territoryData)
+	tableFormatter.PrintTable(TableData{Columns: columns, Rows: rows})
 
 	// Print team territory control summary
 	fmt.Println("\nTeam Territory Control:")
@@ -952,10 +954,10 @@ func DisplayTerritoryControl(saveOutput *WC4SaveOutput, citiesByOwner map[byte][
 	DisplayTeamTerritoryControl(saveOutput, citiesByOwner, result)
 
 	// Print total summary
-	landPercentage := float64(totalOwnedTiles) / float64(result.LandTiles) * 100
-	worldPercentage := float64(totalOwnedTiles) / float64(result.TotalTiles) * 100
+	landPercentage := float64(totalOwnedTiles) / float64(result.LandTiles)
+	worldPercentage := float64(totalOwnedTiles) / float64(result.TotalTiles)
 	fmt.Printf("\nTotal controlled: %d tiles (%.1f%% of land, %.1f%% of world)\n",
-		totalOwnedTiles, landPercentage, worldPercentage)
+		totalOwnedTiles, landPercentage*100, worldPercentage*100)
 }
 
 // DisplayTeamTerritoryControl shows team territory control summary
@@ -965,27 +967,45 @@ func DisplayTeamTerritoryControl(saveOutput *WC4SaveOutput, citiesByOwner map[by
 	// Group players by team and calculate team totals
 	teamData := GroupPlayersByTeamWithTerritory(saveOutput.PlayerData, citiesByOwner, result)
 
-	// Convert to slice and calculate percentages
-	var teamTerritoryData []TeamTerritoryData
-	for _, team := range teamData {
-		landPercentage := float64(team.TileCount) / float64(result.LandTiles) * 100
-		worldPercentage := float64(team.TileCount) / float64(result.TotalTiles) * 100
-		team.LandPercent = landPercentage
-		team.WorldPercent = worldPercentage
-		teamTerritoryData = append(teamTerritoryData, *team)
+	// Build rows inline and print (no table-specific struct)
+	columns := []ColumnDef{
+		{"Team", "int", "right"},
+		{"Players", "int", "right"},
+		{"Tiles", "int", "right"},
+		{"Land %", "percent", "right"},
+		{"World %", "percent", "right"},
 	}
 
-	// Sort teams by tile count (descending) for better readability
-	sort.Slice(teamTerritoryData, func(i, j int) bool {
-		return teamTerritoryData[i].TileCount > teamTerritoryData[j].TileCount
+	// Flatten map to slice of keys for deterministic order by tiles desc
+	type teamRow struct {
+		id   int
+		data *TeamTerritoryData
+	}
+	var rowsData []teamRow
+	for _, t := range teamData {
+		rowsData = append(rowsData, teamRow{id: t.TeamID, data: t})
+	}
+	sort.Slice(rowsData, func(i, j int) bool {
+		return rowsData[i].data.TileCount > rowsData[j].data.TileCount
 	})
 
-	// Print team territory control table
-	tableFormatter.PrintTeamTerritoryControlTable(teamTerritoryData)
+	var rows [][]interface{}
+	for _, tr := range rowsData {
+		landPct := float64(tr.data.TileCount) / float64(result.LandTiles)
+		worldPct := float64(tr.data.TileCount) / float64(result.TotalTiles)
+		rows = append(rows, []interface{}{
+			tr.id,
+			tr.data.PlayerCount,
+			tr.data.TileCount,
+			landPct,
+			worldPct,
+		})
+	}
+	tableFormatter.PrintTable(TableData{Columns: columns, Rows: rows})
 }
 
-// ListTilesByOwner displays city tiles by owner analysis
-func ListTilesByOwner(saveOutput *WC4SaveOutput) {
+// ListTiles displays city tile ownership analysis and territory control
+func ListTiles(saveOutput *WC4SaveOutput) {
 	DisplayHeader("City Tile Ownership Analysis")
 
 	// Analyze city tiles

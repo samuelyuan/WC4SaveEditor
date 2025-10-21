@@ -68,28 +68,26 @@ func TestGetCountryName(t *testing.T) {
 	}
 }
 
-
-
 func TestGetAllCountries(t *testing.T) {
 	countries := GetAllCountries()
-	
+
 	// Test that we get the expected number of countries
 	expectedCount := 53 // Based on the countryCodes slice length
 	if len(countries) != expectedCount {
 		t.Errorf("GetAllCountries() returned %d countries, want %d", len(countries), expectedCount)
 	}
-	
+
 	// Test that the first and last countries are correct
 	if len(countries) > 0 {
 		first := countries[0]
 		if first.ID != 0x01 || first.Name != "UK" {
-			t.Errorf("First country = {ID: 0x%02x, Name: %s}, want {ID: 0x01, Name: UK}", 
+			t.Errorf("First country = {ID: 0x%02x, Name: %s}, want {ID: 0x01, Name: UK}",
 				first.ID, first.Name)
 		}
-		
+
 		last := countries[len(countries)-1]
 		if last.ID != 0x37 || last.Name != "African Scorpion" {
-			t.Errorf("Last country = {ID: 0x%02x, Name: %s}, want {ID: 0x37, Name: African Scorpion}", 
+			t.Errorf("Last country = {ID: 0x%02x, Name: %s}, want {ID: 0x37, Name: African Scorpion}",
 				last.ID, last.Name)
 		}
 	}
@@ -98,7 +96,7 @@ func TestGetAllCountries(t *testing.T) {
 func TestGetCountryCount(t *testing.T) {
 	count := GetCountryCount()
 	expectedCount := 53 // Based on the countryCodes slice length
-	
+
 	if count != expectedCount {
 		t.Errorf("GetCountryCount() = %d, want %d", count, expectedCount)
 	}
@@ -107,39 +105,39 @@ func TestGetCountryCount(t *testing.T) {
 // Test ColorBytesToHex function
 func TestColorBytesToHex(t *testing.T) {
 	tests := []struct {
-		name        string
-		colorBytes  [4]byte
-		expected    string
+		name       string
+		colorBytes [4]byte
+		expected   string
 	}{
 		{
-			name:        "Red color",
-			colorBytes:  [4]byte{255, 0, 0, 0},
-			expected:    "ff0000",
+			name:       "Red color",
+			colorBytes: [4]byte{255, 0, 0, 0},
+			expected:   "ff0000",
 		},
 		{
-			name:        "Green color",
-			colorBytes:  [4]byte{0, 255, 0, 0},
-			expected:    "00ff00",
+			name:       "Green color",
+			colorBytes: [4]byte{0, 255, 0, 0},
+			expected:   "00ff00",
 		},
 		{
-			name:        "Blue color",
-			colorBytes:  [4]byte{0, 0, 255, 0},
-			expected:    "0000ff",
+			name:       "Blue color",
+			colorBytes: [4]byte{0, 0, 255, 0},
+			expected:   "0000ff",
 		},
 		{
-			name:        "White color",
-			colorBytes:  [4]byte{255, 255, 255, 0},
-			expected:    "ffffff",
+			name:       "White color",
+			colorBytes: [4]byte{255, 255, 255, 0},
+			expected:   "ffffff",
 		},
 		{
-			name:        "Black color",
-			colorBytes:  [4]byte{0, 0, 0, 0},
-			expected:    "000000",
+			name:       "Black color",
+			colorBytes: [4]byte{0, 0, 0, 0},
+			expected:   "000000",
 		},
 		{
-			name:        "Mixed color",
-			colorBytes:  [4]byte{128, 64, 192, 0},
-			expected:    "8040c0",
+			name:       "Mixed color",
+			colorBytes: [4]byte{128, 64, 192, 0},
+			expected:   "8040c0",
 		},
 	}
 
@@ -156,9 +154,9 @@ func TestColorBytesToHex(t *testing.T) {
 // Test GetCountryInfoFromData function
 func TestGetCountryInfoFromData(t *testing.T) {
 	tests := []struct {
-		name        string
-		countryData CountryData
-		expectedName string
+		name          string
+		countryData   CountryData
+		expectedName  string
 		expectedColor string
 	}{
 		{

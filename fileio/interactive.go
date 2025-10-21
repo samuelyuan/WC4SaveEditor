@@ -213,27 +213,27 @@ func selectTileFromList(unitTiles []UnitTileInfo, saveOutput *WC4SaveOutput) *Un
 
 	// Create table data
 	tableFormatter := NewTableFormatter()
-	headers := []ColumnConfig{
-		{"Index", 7, "right"},
-		{"Coordinates", 13, "center"},
-		{"Owner", 20, "left"},
-		{"Unit Type/Name", 25, "left"},
+	columns := []ColumnDef{
+		{"Index", "int", "right"},
+		{"Coordinates", "string", "center"},
+		{"Owner", "string", "left"},
+		{"Unit Type/Name", "string", "left"},
 	}
 
-	var data [][]string
+	var rows [][]interface{}
 	for i, tile := range unitTiles {
 		ownerName := getOwnerDisplayName(tile.Owner, saveOutput)
 		displayName := getUnitDisplayName(tile)
-		row := []string{
-			fmt.Sprintf("%d", i+1),
+		row := []interface{}{
+			i + 1,
 			fmt.Sprintf("(%d,%d)", tile.X, tile.Y),
 			ownerName,
 			displayName,
 		}
-		data = append(data, row)
+		rows = append(rows, row)
 	}
 
-	tableFormatter.PrintTable(headers, data)
+	tableFormatter.PrintTable(TableData{Columns: columns, Rows: rows})
 
 	// Get tile selection
 	fmt.Printf("\nSelect tile to convert (1-%d): ", len(unitTiles))
